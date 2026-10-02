@@ -1134,6 +1134,7 @@
   var cloudReady = false;
   var cloudUid = null;
   var cloudSyncTimer = null;
+  var catalogSyncTimer = null;
   var cloudStatus = "offline"; // "offline" | "connecting" | "synced" | "error"
 
   function isFirebaseConfigured(){
@@ -1172,6 +1173,25 @@
       .catch(function(){ setCloudStatus("error"); });
   }
 
+  // Catalog overrides/order are the one thing that's shared across every
+  // device, not private per-device like the rest of this backup -- the
+  // point of editing the catalog is that everyone sees the same result.
+  function scheduleCatalogSync(){
+    if(!cloudReady) return;
+    clearTimeout(catalogSyncTimer);
+    catalogSyncTimer = setTimeout(pushSharedCatalog, 800);
+  }
+
+  function pushSharedCatalog(){
+    if(!cloudReady) return;
+    var payload = {
+      overrides: readJSON(CATALOG_OVERRIDES_KEY, {}),
+      order: readJSON(CATALOG_ORDER_KEY, {}),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    firebase.firestore().collection("shared_catalog").doc("current").set(payload).catch(function(){});
+  }
+
   // Runs once at startup, before the first render: try to restore a previous save
   // for this anonymous user into localStorage, then let the app boot normally.
   function initCloudSync(onDone){
@@ -1188,6 +1208,17 @@
         if(doc && doc.exists){
           var blob = doc.data().data || {};
           Object.keys(blob).forEach(function(k){ localStorage.setItem(k, blob[k]); });
+        }
+        // Catalog overrides/order are shared, not part of this device's own
+        // backup -- pull the current shared state in too, overwriting
+        // whatever this device had locally. The shared copy is always the
+        // source of truth for catalog edits.
+        return firebase.firestore().collection("shared_catalog").doc("current").get();
+      }).then(function(sharedDoc){
+        if(sharedDoc && sharedDoc.exists){
+          var data = sharedDoc.data();
+          if(data.overrides) localStorage.setItem(CATALOG_OVERRIDES_KEY, JSON.stringify(data.overrides));
+          if(data.order) localStorage.setItem(CATALOG_ORDER_KEY, JSON.stringify(data.order));
         }
         cloudReady = true;
         setCloudStatus("synced");
@@ -1246,6 +1277,7 @@
     if(!overrides[itemId]) overrides[itemId] = {};
     overrides[itemId][field] = value;
     writeJSON(CATALOG_OVERRIDES_KEY, overrides);
+    scheduleCatalogSync();
   }
 
   // Records the fridge-walk order for one store+supplier group.
@@ -1253,11 +1285,13 @@
     var order = readJSON(CATALOG_ORDER_KEY, {});
     order[store+"|"+supplier] = orderedIds;
     writeJSON(CATALOG_ORDER_KEY, order);
+    scheduleCatalogSync();
   }
 
   function resetCatalogEdits(){
     writeJSON(CATALOG_OVERRIDES_KEY, {});
     writeJSON(CATALOG_ORDER_KEY, {});
+    scheduleCatalogSync();
   }
 
   function sessionKey(store, cycle){ return SESSION_KEY_PREFIX + store + "_" + cycle; }
