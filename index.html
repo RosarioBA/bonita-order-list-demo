@@ -2327,8 +2327,15 @@
       navigator.share({ title: state.printData.storeName + " — Order", text: shareText }).catch(function(){});
     }
     else if(action === "request-submit"){
-      state.confirmSubmitOpen = true;
-      render();
+      var checkItems = itemsForStore(state.store);
+      var checkSession = loadSession(state.store, state.cycle);
+      var anyUntouched = checkItems.some(function(i){ return !isTouched(entryFor(checkSession,i)); });
+      if(anyUntouched){
+        state.confirmSubmitOpen = true;
+        render();
+      } else {
+        submitList();
+      }
     }
     else if(action === "cancel-submit" || action === "dismiss-overlay"){
       state.confirmSubmitOpen = false;
