@@ -27,6 +27,10 @@ model. The only change is **how data is saved**:
 - A small "☁ Saved" / "☁ Saving…" / "⚠ Not saved to cloud" badge in the bottom-right corner shows
   the current sync status. If Firebase isn't set up yet (see below) or the badge shows an error,
   the app still works exactly as before — this is a backup layer, not a hard dependency.
+- There's also a **🕑 Order history** button on the order screen — unlike everything else in this
+  app, that one *is* shared across everyone (not per-device), since the point of a history is
+  seeing what others submitted. It reads from a separate shared Firestore collection and needs the
+  extra security rule below to work.
 
 ## One-time setup: connecting a real Firebase project
 
@@ -43,14 +47,20 @@ your behalf since it needs your own Google account. Takes about 5 minutes:
    web app (no Firebase Hosting needed, just the config object). Copy the `firebaseConfig` object
    it gives you.
 5. Paste those real values into `FIREBASE_CONFIG` in `index.html`, replacing every `"REPLACE_ME"`.
-6. In **Firestore Database → Rules**, replace the default rules with this so each anonymous user
-   can only ever read/write their *own* document:
+6. In **Firestore Database → Rules**, replace the default rules with this — the `users` block keeps
+   each anonymous user's private backup document to themselves, and the `shared_submissions` block
+   lets any signed-in (even anonymous) user read every submitted order and create new ones, but
+   never edit or delete someone else's:
    ```
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
        match /users/{userId} {
          allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+       match /shared_submissions/{submissionId} {
+         allow read, create: if request.auth != null;
+         allow update, delete: if false;
        }
      }
    }
