@@ -2215,6 +2215,13 @@
     }
   });
 
+  document.addEventListener("click", function(e){
+    if(state.openOnHandPicker && !e.target.closest(".onhand-picker")){
+      state.openOnHandPicker = null;
+      render();
+    }
+  }, true);
+
   app.addEventListener("input", function(e){
     var el = e.target;
     var action = el.getAttribute("data-action");
