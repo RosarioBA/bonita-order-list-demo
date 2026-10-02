@@ -48,9 +48,11 @@ your behalf since it needs your own Google account. Takes about 5 minutes:
    it gives you.
 5. Paste those real values into `FIREBASE_CONFIG` in `index.html`, replacing every `"REPLACE_ME"`.
 6. In **Firestore Database → Rules**, replace the default rules with this — the `users` block keeps
-   each anonymous user's private backup document to themselves, and the `shared_submissions` block
-   lets any signed-in (even anonymous) user read every submitted order and create new ones, but
-   never edit or delete someone else's:
+   each anonymous user's private backup document to themselves, `shared_submissions` lets any
+   signed-in (even anonymous) user read every submitted order and create new ones but never edit or
+   delete someone else's, and `shared_catalog` lets everyone read and write the one shared catalog
+   document (field edits and fridge-walk order are meant to be edited collaboratively, so unlike
+   submissions this one allows updates, not just appends):
    ```
    rules_version = '2';
    service cloud.firestore {
@@ -61,6 +63,9 @@ your behalf since it needs your own Google account. Takes about 5 minutes:
        match /shared_submissions/{submissionId} {
          allow read, create: if request.auth != null;
          allow update, delete: if false;
+       }
+       match /shared_catalog/{docId} {
+         allow read, write: if request.auth != null;
        }
      }
    }
