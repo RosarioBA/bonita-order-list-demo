@@ -1669,6 +1669,7 @@
       '<div class="list-body">'+groupsHtml+'</div>'+
       '<div class="bottom-bar">'+
         '<button class="submit-btn" data-action="preview-print">🖨 Preview list</button>'+
+        '<button class="link-btn" data-action="fill-test-data">⚡ Fill test data (testing only)</button>'+
       '</div>'
     );
   }
@@ -2242,6 +2243,22 @@
     else if(action === "reset-catalog"){
       catalog = defaultCatalog();
       saveCatalog(catalog);
+      render();
+    }
+    else if(action === "fill-test-data"){
+      // Testing convenience only: fills every untouched item with "0 on
+      // hand" (full par ordered) so a full test submit doesn't require
+      // tapping through the whole list by hand. Leaves anything already
+      // entered or skipped alone.
+      var fillItems = itemsForStore(state.store);
+      var fillSession = loadSession(state.store, state.cycle);
+      fillItems.forEach(function(item){
+        var e = entryFor(fillSession, item);
+        if(isTouched(e)) return;
+        e.onHand = "0";
+        recomputeOrder(e, item);
+      });
+      saveSession(state.store, state.cycle, fillSession);
       render();
     }
     else if(action === "preview-print"){
