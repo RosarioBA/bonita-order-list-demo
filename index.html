@@ -1,0 +1,2425 @@
+<title>Order List</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=DM+Sans:wght@400;500;600;700&family=Caveat:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#FDF9F0;
+    --surface:#FFFFFF;
+    --surface-2:#FBF5E5;
+    --surface-3:#F0E4CC;
+    --text:#3A1018;
+    --text-muted:rgba(48,26,16,.82);
+    --text-faint:rgba(48,26,16,.66);
+    --border:rgba(48,26,16,.38);
+    --border-strong:rgba(48,26,16,.55);
+    --accent:#245C8A;
+    --accent-ink:#163F60;
+    --accent-contrast:#F5F9FC;
+    --success:#4C7132;
+    --success-tint:rgba(76,113,50,.16);
+    --warning:#7A4E14;
+    --warning-tint:rgba(122,78,20,.16);
+    --skip:#5C5340;
+    --skip-tint:rgba(92,83,64,.2);
+    --danger:#A8432F;
+    --shadow:0 1px 2px rgba(58,16,24,.06), 0 6px 20px -8px rgba(58,16,24,.18);
+    --radius-lg:22px;
+    --radius-md:16px;
+    --radius-sm:10px;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1C1013;
+      --surface:#271719;
+      --surface-2:#2E1B1E;
+      --surface-3:#382227;
+      --text:#F3E9DB;
+      --text-muted:rgba(243,233,219,.74);
+      --text-faint:rgba(243,233,219,.55);
+      --border:rgba(243,233,219,.2);
+      --border-strong:rgba(243,233,219,.34);
+      --accent:#6FA8DC;
+      --accent-ink:#BFE0FF;
+      --accent-contrast:#0F2436;
+      --success:#94BE73;
+      --success-tint:rgba(148,190,115,.16);
+      --warning:#D9A868;
+      --warning-tint:rgba(217,168,104,.16);
+      --skip:#A79A86;
+      --skip-tint:rgba(167,154,134,.18);
+      --danger:#E28371;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 26px -10px rgba(0,0,0,.55);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1C1013;
+    --surface:#271719;
+    --surface-2:#2E1B1E;
+    --surface-3:#382227;
+    --text:#F3E9DB;
+    --text-muted:rgba(243,233,219,.74);
+    --text-faint:rgba(243,233,219,.55);
+    --border:rgba(243,233,219,.2);
+    --border-strong:rgba(243,233,219,.34);
+    --accent:#6FA8DC;
+    --accent-ink:#BFE0FF;
+    --accent-contrast:#0F2436;
+    --success:#94BE73;
+    --success-tint:rgba(148,190,115,.16);
+    --warning:#D9A868;
+    --warning-tint:rgba(217,168,104,.16);
+    --skip:#A79A86;
+    --skip-tint:rgba(167,154,134,.18);
+    --danger:#E28371;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 26px -10px rgba(0,0,0,.55);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"DM Sans", system-ui, sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  h1,h2,h3{
+    font-family:"Fraunces", Georgia, serif;
+    text-wrap:balance;
+    margin:0;
+  }
+  button{font-family:inherit; color:inherit;}
+  input{font-family:inherit; color:inherit;}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  #app{
+    max-width:640px;
+    margin:0 auto;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  /* ---------- shared bits ---------- */
+  .script{
+    font-family:"Caveat", cursive;
+    color:var(--accent-ink);
+    font-size:1.35rem;
+    font-weight:600;
+  }
+  .wordmark{
+    font-family:"Fraunces", serif;
+    font-weight:600;
+    font-size:1.1rem;
+    letter-spacing:.02em;
+  }
+  .steps{display:flex; gap:6px; justify-content:center;}
+  .steps span{width:6px;height:6px;border-radius:50%;background:var(--border-strong);}
+  .steps span.active{background:var(--accent); width:18px; border-radius:4px;}
+
+  .centered-screen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:28px;
+    padding:32px 24px 48px;
+    text-align:center;
+  }
+  .centered-screen .heading{display:flex; flex-direction:column; gap:8px; align-items:center;}
+  .centered-screen h1{font-size:1.9rem;}
+  .choice-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    width:100%;
+  }
+  @media (max-width:420px){ .choice-grid{grid-template-columns:1fr;} }
+  .choice-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:28px 16px;
+    box-shadow:var(--shadow);
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .choice-card:active{transform:scale(.97);}
+  .choice-card:hover{border-color:var(--accent);}
+  .choice-card .icon{font-size:1.9rem;}
+  .choice-card .label{font-family:"Fraunces",serif; font-size:1.15rem; font-weight:600;}
+  .choice-card .sub{font-size:.8rem; color:var(--text-muted);}
+
+  .name-list{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .name-row{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    padding:16px 18px;
+    font-size:1.05rem;
+    font-weight:600;
+    text-align:left;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+  }
+  .name-row:active{transform:scale(.98);}
+  .name-row .chevron{color:var(--text-faint); font-size:1.1rem;}
+
+  .link-btn{
+    background:none;
+    border:none;
+    color:var(--text-muted);
+    font-size:.85rem;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:4px;
+  }
+  .back-row{
+    display:flex; align-items:center; gap:6px;
+    padding:14px 20px 0;
+    color:var(--text-muted);
+    font-size:.9rem;
+    cursor:pointer;
+    align-self:flex-start;
+  }
+
+  /* ---------- order list / item info shell ---------- */
+  .app-header{
+    background:var(--bg);
+    padding:14px 18px 10px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .app-header .row1{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .identity{display:flex; flex-direction:column; gap:1px;}
+  .identity .store{font-family:"Fraunces",serif; font-size:1.25rem; font-weight:600;}
+  .identity .staff{font-size:.78rem; color:var(--text-muted);}
+  .header-actions{display:flex; gap:8px;}
+  .icon-btn{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:999px;
+    width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.05rem;
+    cursor:pointer;
+  }
+  .icon-btn:active{transform:scale(.94);}
+
+  .cycle-toggle{
+    display:inline-flex;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:3px;
+    align-self:flex-start;
+    gap:2px;
+  }
+  .cycle-toggle button{
+    border:none; background:none;
+    padding:6px 16px;
+    border-radius:999px;
+    font-size:.82rem;
+    font-weight:600;
+    cursor:pointer;
+    color:var(--text-muted);
+  }
+  .cycle-toggle button.active{
+    background:var(--accent);
+    color:var(--accent-contrast);
+  }
+
+  .progress-line{display:flex; align-items:center; gap:8px; font-size:.78rem; color:var(--text-muted);}
+  .progress-bar{flex:1; height:5px; border-radius:999px; background:var(--surface-3); overflow:hidden;}
+  .progress-bar > i{display:block; height:100%; background:var(--success); border-radius:999px; transition:width .25s ease;}
+
+  .search-row{position:relative; display:flex;}
+  .search-input{
+    width:100%;
+    border:1px solid var(--border-strong);
+    background:var(--surface);
+    border-radius:999px;
+    padding:8px 34px 8px 14px;
+    font-size:16px;
+    color:var(--text);
+  }
+  .search-input:focus{border-color:var(--accent);}
+  .search-input::placeholder{color:var(--text-faint);}
+  .search-clear{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    width:22px; height:22px; border-radius:50%; border:none;
+    background:var(--surface-3); color:var(--text-muted);
+    font-size:.7rem; line-height:1; cursor:pointer;
+  }
+  .empty-search{
+    padding:32px 16px; text-align:center; color:var(--text-muted); font-size:.88rem;
+  }
+
+  .list-body{
+    flex:1;
+    padding:0 8px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .supplier-group{display:flex; flex-direction:column;}
+  .supplier-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    width:100%; border:none; font:inherit; text-align:left; cursor:pointer;
+    padding:8px 6px 3px;
+    position:sticky; top:var(--content-top, 96px);
+    background:linear-gradient(var(--bg) 75%, transparent);
+    z-index:4;
+  }
+  .supplier-head h2{font-size:.72rem; letter-spacing:.09em; text-transform:uppercase; color:var(--text-muted); font-family:"DM Sans",sans-serif; font-weight:700;}
+  .supplier-head-right{display:flex; align-items:center; gap:8px;}
+  .chevron{font-size:.65rem; color:var(--text-faint); width:10px; text-align:center;}
+  .supplier-head .count{font-size:.72rem; color:var(--text-faint); font-variant-numeric:tabular-nums;}
+  .category-head{
+    font-size:.65rem; color:var(--text-faint); font-weight:700;
+    letter-spacing:.04em; padding:7px 6px 3px; text-transform:uppercase;
+    border-top:1px solid var(--border); margin-top:2px;
+  }
+  .category-head:first-of-type{border-top:none; margin-top:0;}
+  .category-head-bar, .category-head-bar:first-of-type{
+    font-size:.78rem; color:var(--accent-ink); font-weight:800;
+    letter-spacing:.03em; text-transform:uppercase;
+    border-top:2px solid var(--accent); border-bottom:2px solid var(--accent);
+    padding:8px 6px 6px; margin-top:10px;
+  }
+
+  /* Spreadsheet-style row grid, shared by the column-header strip and every
+     item row so the "Have"/"Order" labels line up over their inputs. */
+  .row-grid{
+    display:grid;
+    grid-template-columns: 8px 1fr 50px 50px 38px;
+    gap:7px;
+    align-items:center;
+  }
+  .column-header{
+    position:sticky; top:0; z-index:6; background:var(--bg);
+    padding:8px 6px 6px;
+    font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-faint);
+  }
+  .column-header span:nth-child(3), .column-header span:nth-child(4){ text-align:center; }
+
+  .item-row-wrap{border-bottom:1px solid var(--border);}
+  .item-row-wrap.is-skipped{opacity:.55;}
+  .item-row{padding:6px 6px;}
+  .status-dot{
+    width:7px; height:7px; border-radius:50%; flex:none;
+    background:var(--border-strong); justify-self:center;
+  }
+  .status-dot.done{background:var(--success);}
+  .status-dot.skipped{background:var(--skip);}
+  .row-name{min-width:0;}
+  .item-name{
+    font-weight:600; font-size:.82rem; line-height:1.25; overflow-wrap:break-word;
+    background:none; border:none; padding:0; font-family:inherit; color:inherit;
+    text-align:left; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
+  }
+  .info-caret{
+    font-size:1.15rem; color:var(--accent); font-weight:400; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:22px; min-height:22px; margin:-4px 0;
+  }
+  .info-panel{
+    margin:0 6px 6px 21px; padding:8px 10px; background:var(--surface-2);
+    border:1px solid var(--border); border-radius:var(--radius-sm);
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .info-row{display:flex; justify-content:space-between; font-size:.76rem; color:var(--text-muted);}
+  .info-row b{color:var(--text); font-variant-numeric:tabular-nums; font-weight:700;}
+  .info-edit-link{
+    align-self:flex-start; background:none; border:none; padding:2px 0 0;
+    font-size:.72rem; color:var(--accent-ink); text-decoration:underline; cursor:pointer;
+  }
+  .row-hint{font-size:.66rem; color:var(--text-muted); line-height:1.3;}
+  .name-es{font-size:.76rem; color:var(--text-faint); font-style:italic; margin-top:1px;}
+  .row-hint .name-es{font-size:inherit; margin-top:0;}
+
+  .cell-wrap{position:relative;}
+  .cell-input{
+    width:100%;
+    border:1px solid var(--border-strong);
+    background:var(--surface);
+    border-radius:8px;
+    padding:5px 3px;
+    font-size:16px; /* iOS/Android zoom in on focus below 16px - this avoids that */
+    font-weight:600;
+    text-align:center;
+  }
+  .cell-input:focus{border-color:var(--accent);}
+  .cell-input.order{border-color:var(--accent); background:var(--surface-2);}
+
+  .onhand-picker{position:relative;}
+  .onhand-trigger{cursor:pointer;}
+  .onhand-dropdown{
+    position:absolute; top:calc(100% + 3px); left:0; right:0; z-index:20;
+    background:var(--surface); border:1px solid var(--border-strong);
+    border-radius:8px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .onhand-dropdown-scroll{max-height:96px; overflow-y:auto;}
+  .onhand-option{
+    display:block; width:100%; text-align:center; background:none; border:none;
+    border-bottom:1px solid var(--border); padding:8px 4px; font-size:13px; font-weight:600;
+    color:var(--text); font-family:inherit; cursor:pointer;
+  }
+  .onhand-option:last-child{border-bottom:none;}
+  .onhand-option.active{background:var(--success-tint); color:var(--success); font-weight:800;}
+  .onhand-option:active{background:var(--surface-2);}
+  .manual-dot{
+    position:absolute; top:-3px; right:-3px; width:7px; height:7px; border-radius:50%;
+    background:var(--accent); border:1px solid var(--surface); pointer-events:none;
+  }
+
+  .skip-btn{
+    width:100%; min-height:28px;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--text-muted);
+    font-size:.6rem;
+    font-weight:700;
+    border-radius:8px;
+    cursor:pointer;
+    padding:0;
+  }
+  .skip-btn.active{background:var(--skip-tint); border-color:var(--skip); color:var(--skip);}
+  .skip-btn:active{transform:scale(.94);}
+
+  .row-note{
+    font-size:.68rem; color:var(--text-muted);
+    padding:0 6px 6px 21px;
+    display:flex; flex-wrap:wrap; gap:4px 8px;
+  }
+  .row-note .note-warn{color:var(--warning);}
+  .reset-link{
+    background:none; border:none; padding:0; font:inherit;
+    color:var(--accent-ink); text-decoration:underline; cursor:pointer;
+  }
+
+  .bottom-bar{
+    background:var(--bg);
+    border-top:1px solid var(--border);
+    padding:16px 18px calc(20px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .submit-btn{
+    background:var(--accent);
+    color:var(--accent-contrast);
+    border:none;
+    border-radius:var(--radius-md);
+    padding:14px;
+    font-size:1rem;
+    font-weight:700;
+    cursor:pointer;
+    width:100%;
+  }
+  .submit-btn:active{transform:scale(.98);}
+
+  .preview-btn{
+    background:var(--surface-2);
+    color:var(--accent-ink);
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius-md);
+    padding:11px;
+    font-size:.9rem;
+    font-weight:700;
+    cursor:pointer;
+    width:100%;
+  }
+  .preview-btn:active{transform:scale(.98);}
+
+  /* ---------- settings preview (concept only) ---------- */
+  .settings-page{max-width:640px; margin:0 auto; padding:8px 18px 40px;}
+  .settings-banner{
+    background:var(--warning-tint); color:var(--warning); border:1px solid var(--warning);
+    border-radius:var(--radius-md); padding:12px 14px; font-size:.82rem; line-height:1.5; margin-bottom:18px;
+  }
+  .settings-title{font-size:1.5rem; margin-bottom:16px;}
+  .settings-section{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:14px 16px; margin-bottom:14px;
+  }
+  .settings-section h3{font-size:.95rem; font-family:"DM Sans",sans-serif; font-weight:800;}
+  .settings-hint{font-size:.78rem; color:var(--text-muted); margin:2px 0 10px;}
+  .settings-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:8px 0; border-bottom:1px solid var(--border); font-size:.9rem; font-weight:600;
+  }
+  .settings-row-btn{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:4px 10px; font-size:.72rem; font-weight:700; color:var(--text-faint); cursor:not-allowed;
+  }
+  .settings-add{
+    width:100%; margin-top:10px; background:none; border:1px dashed var(--border-strong);
+    border-radius:var(--radius-sm); padding:9px; font-size:.85rem; font-weight:700;
+    color:var(--text-faint); cursor:not-allowed;
+  }
+  .settings-danger{
+    width:100%; background:none; border:1px solid var(--danger);
+    border-radius:var(--radius-sm); padding:10px; font-size:.85rem; font-weight:700;
+    color:var(--danger); cursor:pointer;
+  }
+  .settings-danger:active{background:var(--danger); color:var(--accent-contrast);}
+
+  /* ---------- drag-to-reorder (Item Info) ---------- */
+  .reorder-btn{
+    background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px;
+    padding:5px 12px; font-size:.72rem; font-weight:700; color:var(--accent-ink); cursor:pointer;
+  }
+  .reorder-hint{font-size:.76rem; color:var(--text-muted); padding:0 6px 8px; margin:0;}
+  .reorder-list{display:flex; flex-direction:column; gap:6px; padding:0 6px 12px;}
+  .reorder-row{
+    display:flex; align-items:center; gap:12px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:11px 12px; font-size:.9rem; font-weight:600;
+  }
+  .drag-handle{font-size:1.2rem; color:var(--text-faint); line-height:1; cursor:grab; touch-action:none;}
+  .reorder-name{flex:1;}
+  .sortable-ghost{opacity:.35;}
+  .sortable-chosen{border-color:var(--accent); background:var(--surface-2);}
+  .sortable-drag{box-shadow:var(--shadow);}
+
+  /* ---------- printable order ---------- */
+  .print-page{max-width:640px; margin:0 auto; padding:16px 18px 40px;}
+  .top-actions{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;}
+  .top-actions-right{display:flex; gap:8px;}
+  .top-actions .preview-btn, .top-actions .submit-btn{width:auto; padding:10px 14px; font-size:.85rem;}
+  .copy-flash{
+    background:var(--success-tint); color:var(--success); border:1px solid var(--success);
+    border-radius:var(--radius-sm); padding:8px 12px; font-size:.82rem; margin-bottom:14px;
+  }
+  .print-hint{font-size:.76rem; color:var(--text-faint); text-align:center; margin-top:18px;}
+  .print-header{margin-bottom:18px; padding-bottom:12px; border-bottom:2px solid var(--text);}
+  .print-header h1{font-size:1.3rem; margin-top:4px;}
+  .print-header p{margin:2px 0 0; color:var(--text-muted); font-size:.85rem;}
+  .print-supplier{margin-bottom:16px; break-inside:avoid;}
+  .print-supplier h3{
+    font-size:.78rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--text-muted); border-bottom:1px solid var(--border); padding-bottom:4px; margin-bottom:6px;
+  }
+  .print-row{
+    display:flex; justify-content:space-between; gap:12px;
+    padding:5px 0; font-size:.94rem; border-bottom:1px dotted var(--border);
+  }
+  .print-row i{color:var(--text-faint); font-style:italic; font-weight:400;}
+  .print-row b{font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .print-empty{color:var(--text-muted); padding:24px 0; text-align:center;}
+
+  @media print{
+    .no-print{display:none !important;}
+    body, .print-page{background:#fff !important; color:#000 !important;}
+    .print-header{border-bottom-color:#000;}
+    .print-supplier h3{color:#000; border-bottom-color:#000;}
+    .print-row{border-bottom-color:#ccc; color:#000;}
+    .print-row i{color:#555;}
+  }
+
+  /* ---------- item info screen ---------- */
+  .filter-tabs{
+    display:flex; gap:6px; padding:8px 18px; overflow-x:auto;
+    position:sticky; top:0; z-index:6; background:var(--bg);
+  }
+  .filter-tabs button{
+    border:1px solid var(--border);
+    background:var(--surface);
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:.8rem;
+    font-weight:600;
+    color:var(--text-muted);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .filter-tabs button.active{background:var(--accent); color:var(--accent-contrast); border-color:var(--accent);}
+
+  .catalog-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:13px 14px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:10px;
+  }
+  .catalog-card .head{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
+  .catalog-card .store-tag{font-size:.66rem; text-transform:uppercase; color:var(--text-faint); letter-spacing:.05em;}
+  .type-chip{
+    font-size:.62rem; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--text-faint); border:1px solid var(--border); border-radius:6px;
+    padding:1px 5px; margin-left:6px; vertical-align:1px;
+  }
+  .est-badge{
+    font-size:.6rem; text-transform:uppercase; letter-spacing:.04em; font-weight:700;
+    color:var(--warning); background:var(--warning-tint); border-radius:6px;
+    padding:1px 5px; margin-left:5px; vertical-align:1px;
+  }
+  .catalog-fields{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .catalog-fields .field label{font-size:.62rem;}
+  .catalog-fields input, .par-row input, .catalog-fields select{
+    width:100%; border:1px solid var(--border-strong); background:var(--surface-2);
+    border-radius:var(--radius-sm); padding:8px 8px; font-size:16px; font-weight:600;
+    color:var(--text); font-family:inherit;
+  }
+  .par-row{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+    border-top:1px dashed var(--border); padding-top:8px;
+  }
+  .par-row .field label{font-size:.62rem;}
+  .box-weight{
+    font-size:.76rem; color:var(--text-muted); border-top:1px dashed var(--border);
+    padding-top:8px; font-variant-numeric:tabular-nums;
+  }
+  .saved-flash{color:var(--success); font-size:.68rem; font-weight:700; opacity:0; transition:opacity .2s;}
+  .saved-flash.show{opacity:1;}
+
+  /* ---------- modal / toast ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(28,16,19,.45);
+    display:flex; align-items:flex-end; justify-content:center; z-index:20;
+    padding:16px;
+  }
+  .sheet{
+    background:var(--surface); border-radius:var(--radius-lg); padding:22px 20px calc(20px + env(safe-area-inset-bottom));
+    width:100%; max-width:520px; display:flex; flex-direction:column; gap:14px;
+    box-shadow:var(--shadow);
+  }
+  .sheet h3{font-size:1.15rem;}
+  .sheet p{margin:0; font-size:.9rem; color:var(--text-muted); line-height:1.5;}
+  .sheet-actions{display:flex; gap:10px;}
+  .sheet-actions button{flex:1; border-radius:var(--radius-md); padding:12px; font-weight:700; font-size:.92rem; cursor:pointer; border:1px solid var(--border);}
+  .btn-ghost{background:var(--surface); color:var(--text);}
+  .btn-primary{background:var(--accent); color:var(--accent-contrast); border-color:var(--accent);}
+
+  .success-screen{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:40px 24px; text-align:center;}
+  .success-screen .check{
+    width:64px; height:64px; border-radius:50%; background:var(--success-tint); color:var(--success);
+    display:flex; align-items:center; justify-content:center; font-size:1.8rem;
+  }
+  .success-screen p{color:var(--text-muted); font-size:.9rem; max-width:36ch;}
+
+  .footer-links{display:flex; justify-content:center; padding:10px 0 22px;}
+
+  .cloud-status-badge{
+    position:fixed; bottom:8px; right:8px; z-index:50;
+    font-size:.65rem; font-weight:700; color:var(--text-faint);
+    background:var(--surface); border:1px solid var(--border); border-radius:999px;
+    padding:3px 9px; pointer-events:none; opacity:.85;
+  }
+  .cloud-status-badge:empty{display:none;}
+</style>
+
+<div id="app"></div>
+<div class="cloud-status-badge" data-role="cloud-status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.7/Sortable.min.js"></script>
+<!-- Firebase (compat build - classic global-style API, no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ============================= DATA ============================= */
+
+  var STORES = [
+    { id:"cafe", name:"Café", icon:"☕" },
+    { id:"dlc",  name:"DLC (Restaurant)", icon:"🍽️" }
+  ];
+
+  var STAFF = {
+    cafe: ["Rosario", "Kim", "Daniel", "Greta", "Maria J", "Rahman"],
+    dlc: ["Yudi", "Yadira", "Jenny", "Rosada", "Santiago", "Zeljko"]
+  };
+
+  // Bumped whenever the shipped default catalog data changes, so browsers
+  // that already cached an older seed (e.g. the pre-real-data placeholder)
+  // pick up the new defaults instead of silently keeping the stale ones.
+  var CATALOG_KEY = "bonita_ol_catalog_v10";
+  var SESSION_KEY_PREFIX = "bonita_ol_session_v1_";
+  var SUBMISSIONS_KEY = "bonita_ol_submissions_v1";
+  var APP_STATE_KEY = "bonita_ol_appstate_v1";
+
+  function defaultCatalog(){
+    return [
+      // Each item: unit (what staff order in) · unitsPerBox (nullable, drives
+      // the rounding note) · weightPerUnit (nullable grams, drives the live
+      // weight calc) · day-specific pars. Box weight is never stored — it's
+      // always unitsPerBox × weightPerUnit, calculated on the Item Info screen.
+      // "category" sub-groups items within a supplier — matches how the real
+      // paper order sheets are laid out. unit "—" and par 0 mark rows where
+      // the source sheet had a dash (not currently tracked / undecided).
+      //
+      // ---- Café (Asko + Eugen) — transcribed from the real order sheet ----
+      // Açaí & Frozen (inferred category)
+      { id:"cafe-acai-bowls-bases", store:"cafe", supplier:"Asko", category:"Açaí & Frozen (inferred category)", name:"Acai bowls/bases", nameEs:"Bases de açaí", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-coconut-cream", store:"cafe", supplier:"Asko", category:"Açaí & Frozen (inferred category)", name:"Coconut cream", nameEs:"Crema de coco", unit:"trays", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Baking & Dry Baking Goods
+      { id:"cafe-baking-powder", store:"cafe", supplier:"Asko", category:"Baking & Dry Baking Goods", name:"Baking powder", nameEs:"Polvo de hornear", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:0.5, parSun:0.5 },
+      { id:"cafe-cocoa-powder", store:"cafe", supplier:"Asko", category:"Baking & Dry Baking Goods", name:"Cocoa powder", nameEs:"Cacao en polvo", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-flour", store:"cafe", supplier:"Asko", category:"Baking & Dry Baking Goods", name:"Flour", nameEs:"Harina", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-melis", store:"cafe", supplier:"Asko", category:"Baking & Dry Baking Goods", name:"Melis", nameEs:"Azúcar glas", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-oats", store:"cafe", supplier:"Asko", category:"Baking & Dry Baking Goods", name:"Oats", nameEs:"Avena", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-sugar", store:"cafe", supplier:"Asko", category:"Baking & Dry Baking Goods", name:"Sugar", nameEs:"Azúcar", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      // Bread & Bakery
+      { id:"cafe-gluten-free-bread", store:"cafe", supplier:"Asko", category:"Bread & Bakery", name:"Gluten-free bread", nameEs:"Pan sin gluten", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-sliced-bread", store:"cafe", supplier:"Asko", category:"Bread & Bakery", name:"Sliced bread", nameEs:"Pan cortado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      // Canned, Pickled & Preserved
+      { id:"cafe-capers", store:"cafe", supplier:"Asko", category:"Canned, Pickled & Preserved", name:"Capers", nameEs:"Alcaparras", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-kalamata-olives", store:"cafe", supplier:"Asko", category:"Canned, Pickled & Preserved", name:"Kalamata olives", nameEs:"Aceitunas kalamata", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-pickles", store:"cafe", supplier:"Asko", category:"Canned, Pickled & Preserved", name:"Pickles", nameEs:"Pepinillos", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-sundried-tomato", store:"cafe", supplier:"Asko", category:"Canned, Pickled & Preserved", name:"Sundried tomato", nameEs:"Tomate deshidratado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:2 },
+      { id:"cafe-tuna", store:"cafe", supplier:"Asko", category:"Canned, Pickled & Preserved", name:"Tuna", nameEs:"Atún", unit:"units", unitsPerBox:9, weightPerUnit:null, parWed:9, parSun:9 },
+      // Condiments, Sauces & Spreads
+      { id:"cafe-apple-cider-vinegar", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Apple cider vinegar", nameEs:"Vinagre de sidra de manzana", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-balsamic-vinegar", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Balsamic (vinegar)", nameEs:"Balsámico", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-honey", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Honey", nameEs:"Miel", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"cafe-mayonnaise", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Mayonnaise", nameEs:"Mayonesa", unit:"units/boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-mustard", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Mustard", nameEs:"Mostaza", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:0.67, parSun:0.67 },
+      { id:"cafe-peanut-butter", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Peanut butter", nameEs:"Mantequilla de maní", unit:"trays", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-syrup", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Syrup", nameEs:"Jarabe", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-tabasco-sauce", store:"cafe", supplier:"Asko", category:"Condiments, Sauces & Spreads", name:"Tabasco sauce", nameEs:"Salsa Tabasco", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Dairy & Refrigerated
+      { id:"cafe-feta-cheese", store:"cafe", supplier:"Asko", category:"Dairy & Refrigerated", name:"Feta cheese", nameEs:"Queso feta", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-greek-yogurt", store:"cafe", supplier:"Asko", category:"Dairy & Refrigerated", name:"Greek yogurt", nameEs:"Yogur griego", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-philadelphia-cream-cheese", store:"cafe", supplier:"Asko", category:"Dairy & Refrigerated", name:"Philadelphia cream cheese", nameEs:"Queso crema Philadelphia", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-sliced-cheese", store:"cafe", supplier:"Asko", category:"Dairy & Refrigerated", name:"Sliced cheese", nameEs:"Queso tajado", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Eggs
+      { id:"cafe-eggs", store:"cafe", supplier:"Asko", category:"Eggs", name:"Eggs", nameEs:"Huevos", unit:"trays", unitsPerBox:null, weightPerUnit:null, parWed:8, parSun:10 },
+      // Meat & Fish
+      { id:"cafe-bacon", store:"cafe", supplier:"Asko", category:"Meat & Fish", name:"Bacon", nameEs:"Tocino", unit:"—", unitsPerBox:null, weightPerUnit:null, parWed:0, parSun:0 },
+      { id:"cafe-chicken", store:"cafe", supplier:"Asko", category:"Meat & Fish", name:"Chicken", nameEs:"Pollo", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-ham", store:"cafe", supplier:"Asko", category:"Meat & Fish", name:"Ham", nameEs:"Jamón", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-salami", store:"cafe", supplier:"Asko", category:"Meat & Fish", name:"Salami", nameEs:"Salami", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-serrano-ham", store:"cafe", supplier:"Asko", category:"Meat & Fish", name:"Serrano ham", nameEs:"Jamón serrano", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:7, parSun:5 },
+      // Nuts & Seeds
+      { id:"cafe-almonds", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Almonds", nameEs:"Almendras", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-cashews", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Cashews", nameEs:"Anacardos", unit:"box bags", unitsPerBox:null, weightPerUnit:null, parWed:8, parSun:8 },
+      { id:"cafe-hazelnuts", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Hazelnuts", nameEs:"Avellanas", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:5, parSun:5 },
+      { id:"cafe-pine-nuts", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Pine nuts", nameEs:"Piñones", unit:"—", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-poppy-seeds", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Poppy seeds", nameEs:"Semillas de amapola", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-shredded-coconut", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Shredded coconut", nameEs:"Coco rallado", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:5, parSun:5 },
+      { id:"cafe-sunflower-seeds", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Sunflower seeds", nameEs:"Semillas de girasol", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:0.5, parSun:0.5 },
+      { id:"cafe-walnuts", store:"cafe", supplier:"Asko", category:"Nuts & Seeds", name:"Walnuts", nameEs:"Nueces", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Oils
+      { id:"cafe-sunflower-oil", store:"cafe", supplier:"Asko", category:"Oils", name:"Sunflower oil", nameEs:"Aceite de girasol", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      // Spices & Herbs
+      { id:"cafe-cardamom", store:"cafe", supplier:"Asko", category:"Spices & Herbs", name:"Cardamom", nameEs:"Cardamomo", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:0, parSun:0 },
+      { id:"cafe-chili-flakes", store:"cafe", supplier:"Asko", category:"Spices & Herbs", name:"Chili flakes", nameEs:"Hojuelas de chile", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-cinnamon", store:"cafe", supplier:"Asko", category:"Spices & Herbs", name:"Cinnamon", nameEs:"Canela", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-coarse-ground-pepper", store:"cafe", supplier:"Asko", category:"Spices & Herbs", name:"Coarse ground pepper", nameEs:"Pimienta molida gruesa", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-oregano", store:"cafe", supplier:"Asko", category:"Spices & Herbs", name:"Oregano", nameEs:"Orégano", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-salt", store:"cafe", supplier:"Asko", category:"Spices & Herbs", name:"Salt", nameEs:"Sal", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-thyme", store:"cafe", supplier:"Asko", category:"Spices & Herbs", name:"Thyme", nameEs:"Tomillo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      // Packaging & Plastic
+      { id:"cafe-acai-lids", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Acai lids", nameEs:"Tapas de açaí", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-aluminum-foil", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Aluminum foil", nameEs:"Papel aluminio", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:3 },
+      { id:"cafe-bakery-bags", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Bakery bags", nameEs:"Bolsas de panadería", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-clear-bags", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Clear bags", nameEs:"Bolsas transparentes", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:5, parSun:5 },
+      { id:"cafe-freezer-bags-2l", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Freezer bags 2L", nameEs:"Bolsas para congelar 2L", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-freezer-bags-6l", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Freezer bags 6L", nameEs:"Bolsas para congelar 6L", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-plastic-container", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Plastic container", nameEs:"Contenedor plástico", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-plastic-lids", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Plastic lids", nameEs:"Tapas plásticas", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"cafe-plastic-wrap-wrapmaster", store:"cafe", supplier:"Asko", category:"Packaging & Plastic", name:"Plastic wrap (Wrapmaster)", nameEs:"Papel film (Wrapmaster)", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Cleaning & Hygiene
+      { id:"cafe-ajax-bleach-cleaner", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Ajax (bleach/cleaner)", nameEs:"Ajax (limpiador)", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-detergent-zalo", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Detergent (Zalo)", nameEs:"Detergente (Zalo)", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-drying-agent-rinse-aid", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Drying agent / rinse aid", nameEs:"Agente secante", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-gloves", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Gloves", nameEs:"Guantes", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:3.5, parSun:3.5 },
+      { id:"cafe-green-sponges", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Green sponges", nameEs:"Esponjas verdes", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-kitchen-spray", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Kitchen spray", nameEs:"Spray de cocina", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-white-cloths-rags", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"White cloths (rags)", nameEs:"Trapos blancos", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-window-cleaner-spray", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Window cleaner spray", nameEs:"Limpiavidrios en spray", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-wire-sponges-steel-wool", store:"cafe", supplier:"Asko", category:"Cleaning & Hygiene", name:"Wire sponges (steel wool)", nameEs:"Esponjas de alambre", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Paper & Registers
+      { id:"cafe-paper-towels", store:"cafe", supplier:"Asko", category:"Paper & Registers", name:"Paper towels", nameEs:"Papel toalla", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-register-receipt-paper-large", store:"cafe", supplier:"Asko", category:"Paper & Registers", name:"Register/receipt paper, large", nameEs:"Papel de registradora grande", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-register-receipt-paper-small", store:"cafe", supplier:"Asko", category:"Paper & Registers", name:"Register/receipt paper, small", nameEs:"Papel de registradora pequeño", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-toilet-paper", store:"cafe", supplier:"Asko", category:"Paper & Registers", name:"Toilet paper", nameEs:"Papel higiénico", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:0.5 },
+      // Dried Fruit
+      { id:"cafe-dates", store:"cafe", supplier:"Eugen", category:"Dried Fruit", name:"Dates", nameEs:"Dátiles", unit:"bag", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Dried Herbs
+      { id:"cafe-dried-chives", store:"cafe", supplier:"Eugen", category:"Dried Herbs", name:"Dried chives", nameEs:"Cebollino seco", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // Fresh Fruit
+      { id:"cafe-apples", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Apples", nameEs:"Manzanas", unit:"units", unitsPerBox:60, weightPerUnit:null, parWed:20, parSun:20 },
+      { id:"cafe-avocados", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Avocados", nameEs:"Aguacates", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:10, parSun:10 },
+      { id:"cafe-bananas", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Bananas", nameEs:"Bananos", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-fresh-blueberries", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Fresh blueberries", nameEs:"Arándanos frescos", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-strawberries", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Strawberries", nameEs:"Fresas", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:8, parSun:8 },
+      // Fresh Herbs
+      { id:"cafe-basil-check-pesto", store:"cafe", supplier:"Eugen", category:"Fresh Herbs", name:"Basil (check pesto)", nameEs:"Albahaca (revisar pesto)", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-cilantro", store:"cafe", supplier:"Eugen", category:"Fresh Herbs", name:"Cilantro", nameEs:"Cilantro", unit:"bunch", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-parsley", store:"cafe", supplier:"Eugen", category:"Fresh Herbs", name:"Parsley", nameEs:"Perejil", unit:"bunch", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:1 },
+      // Fresh Vegetables
+      { id:"cafe-carrots", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Carrots", nameEs:"Zanahoria", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-cherry-tomatoes", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Cherry tomatoes", nameEs:"Tomate cherry", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:8, parSun:8 },
+      { id:"cafe-cucumber", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Cucumber", nameEs:"Pepino", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:10, parSun:8 },
+      { id:"cafe-garlic", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Garlic", nameEs:"Ajo", unit:"bag", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-lemon", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Lemon", nameEs:"Limón amarillo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"cafe-mixed-lettuce", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Mixed lettuce", nameEs:"Mezcla de lechuga", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"cafe-red-pepper-bell-pepper", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Red pepper (bell pepper)", nameEs:"Pimiento rojo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:12, parSun:10 },
+      { id:"cafe-spinach", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Spinach", nameEs:"Espinaca", unit:"bags/trays", unitsPerBox:null, weightPerUnit:null, parWed:10, parSun:7 },
+      { id:"cafe-tomatoes", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"Tomatoes", nameEs:"Tomates", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:1 },
+      { id:"cafe-white-mushrooms", store:"cafe", supplier:"Eugen", category:"Fresh Vegetables", name:"White mushrooms", nameEs:"Champiñón blanco", unit:"trays", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:0.5 },
+      // ---- Café Bar (Eugen, Asko, PALS) — separate bar/drinks ordering,
+      // added post-launch; several par values are invented placeholders
+      // per the source list giving multiple/no numbers for some items.
+      { id:"cafe-oranges", store:"cafe", supplier:"Eugen", category:"Bar", name:"Oranges", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-lime", store:"cafe", supplier:"Eugen", category:"Bar", name:"Lime", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-mint", store:"cafe", supplier:"Eugen", category:"Bar", name:"Mint", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-whole-milk", store:"cafe", supplier:"Asko", category:"Bar", name:"Whole Milk", nameEs:"Helmelk", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:40, parSun:40, placeholder:true },
+      { id:"cafe-low-fat-milk", store:"cafe", supplier:"Asko", category:"Bar", name:"Low-Fat Milk", nameEs:"Lettmelk", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"cafe-lactose-free-milk", store:"cafe", supplier:"Asko", category:"Bar", name:"Lactose-Free Milk", nameEs:"Laktosefri melk", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-coconut-milk-barista-blend", store:"cafe", supplier:"Asko", category:"Bar", name:"Coconut Milk (Barista Blend)", nameEs:"Kokosmelk barista", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-oat-milk", store:"cafe", supplier:"Asko", category:"Bar", name:"Oat Milk", nameEs:"Havremelk", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-almond-milk-barista-blend", store:"cafe", supplier:"Asko", category:"Bar", name:"Almond Milk (Barista Blend)", nameEs:"Mandelmelk barista", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-blueberries", store:"cafe", supplier:"Asko", category:"Bar", name:"Blueberries", nameEs:"Blåbær", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-frozen-blueberries", store:"cafe", supplier:"Asko", category:"Bar", name:"Frozen Blueberries", nameEs:"Blåbær frozen", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-mango-smoothie-base", store:"cafe", supplier:"Asko", category:"Bar", name:"Mango Smoothie Base", nameEs:"Mango smoothies", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-frozen-mango", store:"cafe", supplier:"Asko", category:"Bar", name:"Frozen Mango", nameEs:"Mango frozen", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-frozen-raspberries", store:"cafe", supplier:"Asko", category:"Bar", name:"Frozen Raspberries", nameEs:"Bringebær frozen", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-pineapple", store:"cafe", supplier:"Asko", category:"Bar", name:"Pineapple", nameEs:"Ananas", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-ice-cubes", store:"cafe", supplier:"Asko", category:"Bar", name:"Ice Cubes", nameEs:"Isbiter", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6, placeholder:true },
+      { id:"cafe-napkins-dispenser", store:"cafe", supplier:"Asko", category:"Bar", name:"Napkins (Dispenser)", nameEs:"Servietter (dispensador)", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-chocolate-chips", store:"cafe", supplier:"Asko", category:"Bar", name:"Chocolate Chips", nameEs:"Choco chips", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-chocolate-chips-nibs", store:"cafe", supplier:"Asko", category:"Bar", name:"Chocolate Chips/Nibs", nameEs:"Choco chips/nibs", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-caramel-waffles", store:"cafe", supplier:"Asko", category:"Bar", name:"Caramel Waffles", nameEs:"Karamell vafler", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:5, parSun:5 },
+      { id:"cafe-big-thermal-rolls", store:"cafe", supplier:"Asko", category:"Bar", name:"Big Thermal Rolls", unit:"rolls", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"cafe-sparkling-water-snasa", store:"cafe", supplier:"Asko", category:"Bar", name:"Sparkling Water (Snåsa)", nameEs:"Snåsa kullsyre", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-pens", store:"cafe", supplier:"Asko", category:"Bar", name:"Pens", nameEs:"Lapiceros", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-coke-zero", store:"cafe", supplier:"Asko", category:"Bar", name:"Coke Zero", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-kir-royal-fruit-tea", store:"cafe", supplier:"PALS", category:"Bar", name:"Kir Royal Fruit Tea", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-chai-tea", store:"cafe", supplier:"PALS", category:"Bar", name:"Chai Tea", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4, placeholder:true },
+      { id:"cafe-earl-grey", store:"cafe", supplier:"PALS", category:"Bar", name:"Earl Grey", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-english-breakfast", store:"cafe", supplier:"PALS", category:"Bar", name:"English Breakfast", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-green-tea", store:"cafe", supplier:"PALS", category:"Bar", name:"Green Tea", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-black-tea", store:"cafe", supplier:"PALS", category:"Bar", name:"Black Tea", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-caramel-syrup", store:"cafe", supplier:"PALS", category:"Bar", name:"Caramel Syrup", nameEs:"Karamell syrup", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4, placeholder:true },
+      { id:"cafe-vanilla-syrup", store:"cafe", supplier:"PALS", category:"Bar", name:"Vanilla Syrup", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-hazelnut-syrup", store:"cafe", supplier:"PALS", category:"Bar", name:"Hazelnut Syrup", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-irish-cream-syrup", store:"cafe", supplier:"PALS", category:"Bar", name:"Irish Cream Syrup", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-peach-tea-syrup", store:"cafe", supplier:"PALS", category:"Bar", name:"Peach Tea Syrup", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-dark-chocolate-sauce", store:"cafe", supplier:"PALS", category:"Bar", name:"Dark Chocolate Sauce", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-chocolate-sauce", store:"cafe", supplier:"PALS", category:"Bar", name:"Chocolate Sauce", nameEs:"Choco sauce", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"cafe-whipped-cream", store:"cafe", supplier:"PALS", category:"Bar", name:"Whipped Cream", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"cafe-tea-bags-unspecified", store:"cafe", supplier:"PALS", category:"Bar", name:"Tea Bags (unspecified)", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"cafe-matcha", store:"cafe", supplier:"PALS", category:"Bar", name:"Matcha", unit:"kg", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      // ---- De La Casa (Asko, Verduras, Rema 1000, Vila Import, Carl Evensen)
+      // — transcribed from the real order sheet. No Wed/Sun split was given
+      // for DLC, so parWed = parSun everywhere. `placeholder:true` marks
+      // items whose source cell had no real number — see README.
+      { id:"dlc-qmelk", store:"dlc", supplier:"Asko", name:"Qmelk Milk", nameEs:"Qmelk", unit:"units (x10)", unitsPerBox:null, weightPerUnit:null, parWed:5, parSun:5 },
+      { id:"dlc-olivas-marinadas", store:"dlc", supplier:"Asko", name:"Marinated Olives", nameEs:"olivas marinadas", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-plast-film", store:"dlc", supplier:"Asko", name:"Plastic Wrap", nameEs:"Plast film", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-mantequilla", store:"dlc", supplier:"Asko", name:"Butter", nameEs:"Mantequilla", unit:"units (x18)", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-maizena", store:"dlc", supplier:"Asko", name:"Cornstarch", nameEs:"Maizena", unit:"units (x8)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-higenico-papel", store:"dlc", supplier:"Asko", name:"Toilet Paper", nameEs:"Higenico papel", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-fl-te-piske-box", store:"dlc", supplier:"Asko", name:"Whipping Cream", nameEs:"Fløte piske box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-olivas-kalamanta", store:"dlc", supplier:"Asko", name:"Kalamata Olives", nameEs:"Olivas kalamanta", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-t-rkepapir-box", store:"dlc", supplier:"Asko", name:"Paper Towels", nameEs:"Tørkepapir box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-feta", store:"dlc", supplier:"Asko", name:"Feta Cheese", nameEs:"Feta", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-tomates-secos", store:"dlc", supplier:"Asko", name:"Sun-Dried Tomatoes", nameEs:"Tomates secos", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-cajas-lasagna-box", store:"dlc", supplier:"Asko", name:"Lasagna Trays", nameEs:"Cajas lasagna box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-halloumi-box", store:"dlc", supplier:"Asko", name:"Halloumi Cheese", nameEs:"halloumi box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-alcaparras", store:"dlc", supplier:"Asko", name:"Capers", nameEs:"Alcaparras", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-guantes-s-box", store:"dlc", supplier:"Asko", name:"Gloves (Small)", nameEs:"Guantes S box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-leche-de-laktose-fri", store:"dlc", supplier:"Asko", name:"Lactose-Free Milk", nameEs:"leche de laktose fri", unit:"units (x10)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-guantes-m-box", store:"dlc", supplier:"Asko", name:"Gloves (Medium)", nameEs:"Guantes M box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-mozzarella-tajadas-synnove", store:"dlc", supplier:"Asko", name:"Sliced Mozzarella (Synnøve)", nameEs:"Mozzarella tajadas synnove", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-harina-de-trigo", store:"dlc", supplier:"Asko", name:"Wheat Flour", nameEs:"Harina de trigo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-guantes-l-box", store:"dlc", supplier:"Asko", name:"Gloves (Large)", nameEs:"Guantes L box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-mozzarella-rallado", store:"dlc", supplier:"Asko", name:"Shredded Mozzarella", nameEs:"Mozzarella rallado", unit:"units (x2)", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-mostaza", store:"dlc", supplier:"Asko", name:"Mustard", nameEs:"Mostaza", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-rollos-impresora-peque-box", store:"dlc", supplier:"Asko", name:"Small Printer Rolls", nameEs:"rollos impresora peque box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-brie", store:"dlc", supplier:"Asko", name:"Brie Cheese", nameEs:"Brie", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:0.5, parSun:0.5 },
+      { id:"dlc-ciabatta-sand-carne", store:"dlc", supplier:"Asko", name:"Ciabatta Sandwich Roll", nameEs:"ciabatta sand carne", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-papel-higienico-clientes", store:"dlc", supplier:"Asko", name:"Toilet Paper (Customer)", nameEs:"papel higienico clientes", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-carne-desmechada", store:"dlc", supplier:"Asko", name:"Shredded Beef", nameEs:"carne desmechada", unit:"units (x2)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-mango-congelado", store:"dlc", supplier:"Asko", name:"Frozen Mango", nameEs:"mango congelado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-ajax-caja", store:"dlc", supplier:"Asko", name:"Ajax Cleaner", nameEs:"Ajax caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-huevos", store:"dlc", supplier:"Asko", name:"Eggs", nameEs:"Huevos", unit:"boxes (8 boxes × 30 eggs)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-servilletas-bar", store:"dlc", supplier:"Asko", name:"Bar Napkins", nameEs:"servilletas bar", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-limpia-vidrios-azul-caja", store:"dlc", supplier:"Asko", name:"Glass Cleaner (Blue)", nameEs:"Limpia vidrios azul caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-cebolla-frita", store:"dlc", supplier:"Asko", name:"Fried Onion", nameEs:"Cebolla frita", unit:"units (x6)", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-blab-r-congelado", store:"dlc", supplier:"Asko", name:"Frozen Blueberries", nameEs:"blåbær congelado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-desinfectante-manos", store:"dlc", supplier:"Asko", name:"Hand Sanitizer", nameEs:"Desinfectante manos", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-bacon-box", store:"dlc", supplier:"Asko", name:"Bacon", nameEs:"Bacon box", unit:"boxes (x2)", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-spray-banho-jif", store:"dlc", supplier:"Asko", name:"Bathroom Spray (Jif)", nameEs:"Spray banho jif", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-clilantro-caja-kg", store:"dlc", supplier:"Asko", name:"Cilantro", nameEs:"Clilantro caja kg", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-pollo", store:"dlc", supplier:"Asko", name:"Chicken", nameEs:"Pollo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-spray-cocina-jif", store:"dlc", supplier:"Asko", name:"Kitchen Spray (Jif)", nameEs:"Spray cocina jif", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-albahaca-caja-kg", store:"dlc", supplier:"Asko", name:"Basil", nameEs:"Albahaca caja kg", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-pan-tajado", store:"dlc", supplier:"Asko", name:"Sliced Bread", nameEs:"pan tajado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-leche-de-avena", store:"dlc", supplier:"Asko", name:"Oat Milk", nameEs:"leche de avena", unit:"units (x6)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-clorin-botella-caja", store:"dlc", supplier:"Asko", name:"Bleach", nameEs:"Clorin botella caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-entrecote-ribbeye", store:"dlc", supplier:"Asko", name:"Ribeye Entrecôte", nameEs:"Entrecote ribbeye", unit:"units (2kg)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-almendras", store:"dlc", supplier:"Asko", name:"Almonds", nameEs:"Almendras", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-jabon-maquina-a7", store:"dlc", supplier:"Asko", name:"Dishwasher Soap (A7)", nameEs:"Jabon maquina A7", unit:"units (x3)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-entrecote-m-rbrad", store:"dlc", supplier:"Asko", name:"Tenderloin Entrecôte", nameEs:"Entrecote mørbrad", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-walnuts-box", store:"dlc", supplier:"Asko", name:"Walnuts", nameEs:"Walnuts box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-jabon-maquina-l46", store:"dlc", supplier:"Asko", name:"Dishwasher Soap (L46)", nameEs:"Jabon maquina L46", unit:"units (x3)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-carne-molida-res-box", store:"dlc", supplier:"Asko", name:"Ground Beef", nameEs:"Carne molida res box", unit:"boxes (x9)", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-miel", store:"dlc", supplier:"Asko", name:"Honey", nameEs:"Miel", unit:"units (x8)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-mantequilla-de-mani", store:"dlc", supplier:"Asko", name:"Peanut Butter", nameEs:"Mantequilla de mani", unit:"units (x8)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-carne-molida-cerdo", store:"dlc", supplier:"Asko", name:"Ground Pork", nameEs:"Carne molida cerdo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-vino-tinto", store:"dlc", supplier:"Asko", name:"Red Wine", nameEs:"vino tinto", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-esponjas-alambre-caja", store:"dlc", supplier:"Asko", name:"Steel Wool Sponges", nameEs:"Esponjas alambre caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-pescado-torsk-box", store:"dlc", supplier:"Asko", name:"Cod Fish", nameEs:"pescado torsk box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-vino-blanco", store:"dlc", supplier:"Asko", name:"White Wine", nameEs:"vino blanco", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-esponjas-platos-caja", store:"dlc", supplier:"Asko", name:"Dish Sponges", nameEs:"Esponjas platos caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-gorgonzola", store:"dlc", supplier:"Asko", name:"Gorgonzola Cheese", nameEs:"gorgonzola", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-vinagre-frutas-heinz", store:"dlc", supplier:"Asko", name:"Fruit Vinegar (Heinz)", nameEs:"Vinagre frutas heinz", unit:"units (x3)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-almendras-caja", store:"dlc", supplier:"Asko", name:"Almonds (Boxed)", nameEs:"Almendras caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-almejas-de-mar", store:"dlc", supplier:"Asko", name:"Clams", nameEs:"almejas de mar", unit:"units (x8)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-vinagre-balsamico", store:"dlc", supplier:"Asko", name:"Balsamic Vinegar", nameEs:"Vinagre balsamico", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-comino", store:"dlc", supplier:"Asko", name:"Cumin", nameEs:"Comino", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-mayonesa-box", store:"dlc", supplier:"Asko", name:"Mayonnaise", nameEs:"Mayonesa box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-zalo-box-peq", store:"dlc", supplier:"Asko", name:"Dish Soap (Zalo, Small)", nameEs:"Zalo box peq", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-pimienta-entera", store:"dlc", supplier:"Asko", name:"Whole Pepper", nameEs:"Pimienta entera", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-nachos-box", store:"dlc", supplier:"Asko", name:"Nachos", nameEs:"nachos box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-coco-rallado", store:"dlc", supplier:"Asko", name:"Shredded Coconut", nameEs:"Coco rallado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-oregano", store:"dlc", supplier:"Asko", name:"Oregano", nameEs:"Oregano", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-coco-flakes", store:"dlc", supplier:"Asko", name:"Coconut Flakes", nameEs:"Coco flakes", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-chili-flakes", store:"dlc", supplier:"Asko", name:"Chili Flakes", nameEs:"Chili flakes", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-serrano-modnet", store:"dlc", supplier:"Asko", name:"Serrano Ham (Aged)", nameEs:"serrano modnet", unit:"units (x10)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-leche-condensada-rosada", store:"dlc", supplier:"Asko", name:"Condensed Milk (Strawberry)", nameEs:"Leche condensada rosada", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-laurel", store:"dlc", supplier:"Asko", name:"Bay Leaf", nameEs:"Laurel", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-pan-gluten-free", store:"dlc", supplier:"Asko", name:"Gluten-Free Bread", nameEs:"pan gluten free", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-hapa-caramelo-rosada", store:"dlc", supplier:"Asko", name:"Pink Caramel Topping (Hapå)", nameEs:"Hapå caramelo rosada", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-paprika-polvo", store:"dlc", supplier:"Asko", name:"Paprika Powder", nameEs:"Paprika polvo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-tortillas-de-maiz-box", store:"dlc", supplier:"Asko", name:"Corn Tortillas", nameEs:"Tortillas de maiz box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-sal-caja", store:"dlc", supplier:"Asko", name:"Salt", nameEs:"Sal caja", unit:"boxes (x8)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-curcuma", store:"dlc", supplier:"Asko", name:"Turmeric", nameEs:"Curcuma", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-azucar-caja", store:"dlc", supplier:"Asko", name:"Sugar", nameEs:"Azucar caja", unit:"boxes (x8)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-coriander", store:"dlc", supplier:"Asko", name:"Coriander (Seeds)", nameEs:"Coriander", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-transparentes-basura", store:"dlc", supplier:"Asko", name:"Trash Bags (Clear)", nameEs:"Transparentes basura", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-jabon-manos-liquido-clientes", store:"dlc", supplier:"Asko", name:"Liquid Hand Soap (Customer)", nameEs:"Jabon manos liquido clientes", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-garam-masala", store:"dlc", supplier:"Asko", name:"Garam Masala", nameEs:"Garam masala", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-fryseposer", store:"dlc", supplier:"Asko", name:"Freezer Bags", nameEs:"Fryseposer", unit:"units (2L)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-chocolate-fondant-box", store:"dlc", supplier:"Asko", name:"Fondant Chocolate", nameEs:"chocolate fondant box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-pimienta-molida", store:"dlc", supplier:"Asko", name:"Ground Pepper", nameEs:"Pimienta molida", unit:"units (x6)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-fryseposer-2", store:"dlc", supplier:"Asko", name:"Freezer Bags", nameEs:"Fryseposer", unit:"units (6L)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-tomillo", store:"dlc", supplier:"Asko", name:"Thyme", nameEs:"Tomillo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-zip-lock", store:"dlc", supplier:"Asko", name:"Zip-Lock Bags", nameEs:"Zip lock", unit:"units (3L)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-jacob-ksekraft", store:"dlc", supplier:"Asko", name:"Beef Stock (Jacob)", nameEs:"Jacob øksekraft", unit:"units (x7)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-palillos-entradas", store:"dlc", supplier:"Asko", name:"Toothpicks (Appetizers)", nameEs:"Palillos entradas", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-fiskekraft-toro", store:"dlc", supplier:"Asko", name:"Fish Stock (Toro)", nameEs:"Fiskekraft toro", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-bake-papir", store:"dlc", supplier:"Asko", name:"Baking Paper", nameEs:"Bake papir", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-ksekraft-toro", store:"dlc", supplier:"Asko", name:"Beef Stock (Toro)", nameEs:"øksekraft toro", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-aluminio", store:"dlc", supplier:"Asko", name:"Aluminum Foil", nameEs:"Aluminio", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-chocolate-chips-box", store:"dlc", supplier:"Asko", name:"Chocolate Chips", nameEs:"chocolate chips box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-lechuga-mix", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Mixed Lettuce", nameEs:"Lechuga mix", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:8, parSun:8 },
+      { id:"dlc-espinaca", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Spinach", nameEs:"Espinaca", unit:"boxes (caja de 8)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-brocoli", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Broccoli", nameEs:"Brocoli", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-zucchini-box", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Zucchini", nameEs:"Zucchini box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-zanahoria", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Carrot", nameEs:"zanahoria", unit:"bags (6 per box)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-tomates-caja", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Tomatoes", nameEs:"Tomates caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-tomate-cherry", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Cherry Tomatoes", nameEs:"Tomate cherry", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-aguacates-congelado", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Frozen Avocado", nameEs:"Aguacates congelado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-cebolla-roja", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Red Onion", nameEs:"Cebolla roja", unit:"bags (5kg)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-cebolla-larga", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Green Onion (Scallion)", nameEs:"Cebolla larga", unit:"bunches (x14)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-puerro", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Leek", nameEs:"puerro", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-perejil", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Parsley", nameEs:"Perejil", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-apio", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Celery", nameEs:"Apio", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-alfalfa", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Alfalfa Sprouts", nameEs:"Alfalfa", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-pimento-rojo", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Red Bell Pepper", nameEs:"Pimento rojo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-pimento-amarillo", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Yellow Bell Pepper", nameEs:"Pimento amarillo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-aguacates", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Avocados", nameEs:"Aguacates", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-ajo-kg", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Garlic", nameEs:"Ajo kg", unit:"kg", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-champinon-blanco", store:"dlc", supplier:"Eugen", category:"Verduras", name:"White Mushrooms", nameEs:"Champinon blanco", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-aroma", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Aroma", nameEs:"Aroma", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-portobello", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Portobello Mushrooms", nameEs:"Portobello", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-rucula", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Arugula", nameEs:"Rucula", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-gengibre", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Ginger", nameEs:"Gengibre", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-pommegranat", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Pomegranate", nameEs:"Pommegranat", unit:"kg", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-pepino", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Cucumber", nameEs:"Pepino", unit:"boxes (box of 14)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-bananas", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Bananas", nameEs:"Bananas", unit:"kg", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-fresas", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Strawberries", nameEs:"fresas", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-manzanas-kg", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Apples", nameEs:"Manzanas kg", unit:"kg", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-ahuyama", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Pumpkin (Ahuyama)", nameEs:"ahuyama", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-blueberry", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Blueberries", nameEs:"Blueberry", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-limon-amarillo", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Yellow Lemon", nameEs:"Limon amarillo", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-menta", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Mint", nameEs:"menta", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-limon-verde", store:"dlc", supplier:"Eugen", category:"Verduras", name:"Lime (Green Lemon)", nameEs:"limon verde", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-stavind", store:"dlc", supplier:"Rema 1000", name:"Brown Cheese (Østavind)", nameEs:"Østavind", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-maiz-tostado", store:"dlc", supplier:"Rema 1000", name:"Toasted Corn (Corn Nuts)", nameEs:"maiz tostádo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-camarones-bolsas", store:"dlc", supplier:"Rema 1000", name:"Shrimp (Bagged)", nameEs:"Camarones bolsas", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-seafood-mix", store:"dlc", supplier:"Rema 1000", name:"Seafood Mix", nameEs:"Seafood mix", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-cacao-en-polvo", store:"dlc", supplier:"Rema 1000", name:"Cocoa Powder", nameEs:"Cacao en polvo", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-azucar-pulverizada", store:"dlc", supplier:"Rema 1000", name:"Powdered Sugar", nameEs:"Azucar pulverizada", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-ajonjoli", store:"dlc", supplier:"Rema 1000", name:"Sesame Seeds", nameEs:"Ajonjoli", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-olivas-verdes", store:"dlc", supplier:"Vila Import", name:"Green Olives", nameEs:"Olivas verdes", unit:"units (x3)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-crema-balsamica", store:"dlc", supplier:"Vila Import", name:"Balsamic Cream", nameEs:"Crema balsamica", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-aceite-de-oliva", store:"dlc", supplier:"Vila Import", name:"Olive Oil", nameEs:"Aceite de oliva", unit:"units (x2)", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-aceite-extra-virgen", store:"dlc", supplier:"Vila Import", name:"Extra Virgin Olive Oil", nameEs:"Aceite extra virgen", unit:"units (x2)", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-semillas-de-pino", store:"dlc", supplier:"Vila Import", name:"Pine Nuts", nameEs:"semillas de pino", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-pasta-de-tomate", store:"dlc", supplier:"Vila Import", name:"Tomato Paste", nameEs:"pasta de tomate", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:5, parSun:5 },
+      { id:"dlc-tagliatelle-box", store:"dlc", supplier:"Vila Import", name:"Tagliatelle Pasta", nameEs:"tagliatelle box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:10, parSun:10 },
+      { id:"dlc-spaguete-box", store:"dlc", supplier:"Vila Import", name:"Spaghetti", nameEs:"spaguete box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-penne-box", store:"dlc", supplier:"Vila Import", name:"Penne Pasta", nameEs:"penne box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-pasta-gluten-free-box", store:"dlc", supplier:"Vila Import", name:"Gluten-Free Pasta", nameEs:"pasta gluten free box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-pasta-rellena", store:"dlc", supplier:"Vila Import", name:"Stuffed Pasta", nameEs:"pasta rellena", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-linguini", store:"dlc", supplier:"Vila Import", name:"Linguine", nameEs:"linguini", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-lasagne", store:"dlc", supplier:"Vila Import", name:"Lasagna (Pasta Sheets)", nameEs:"lasagne", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-parmesano-rayado", store:"dlc", supplier:"Vila Import", name:"Grated Parmesan", nameEs:"parmesano rayado", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:8, parSun:8 },
+      { id:"dlc-burrata", store:"dlc", supplier:"Vila Import", name:"Burrata Cheese", nameEs:"burrata", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-jamon", store:"dlc", supplier:"Carl Evensen", name:"Ham", nameEs:"Jamon", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-jabon-vasos", store:"dlc", supplier:"Carl Evensen", name:"Glass Wash Soap", nameEs:"jabon vasos", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-salami", store:"dlc", supplier:"Carl Evensen", name:"Salami", nameEs:"salami", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-jamon-dulce", store:"dlc", supplier:"Carl Evensen", name:"Cooked Ham", nameEs:"jamon dulce", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-energibr-d", store:"dlc", supplier:"Carl Evensen", name:"Energy Bread", nameEs:"Energibrød", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:3, parSun:3 },
+      { id:"dlc-mozarella-perler", store:"dlc", supplier:"Carl Evensen", name:"Mozzarella Pearls", nameEs:"Mozarella perler", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-oskar-vino", store:"dlc", supplier:"Carl Evensen", name:"Wine (Oskar)", nameEs:"oskar vino", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-helado-de-vainilla", store:"dlc", supplier:"Carl Evensen", name:"Vanilla Ice Cream", nameEs:"helado de vainilla", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-focaccia", store:"dlc", supplier:"Carl Evensen", name:"Focaccia Bread", nameEs:"focaccia", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      // ---- De La Casa Bar (added post-launch, supplier TBD for Sodas/Beer/Wine/Liquor) ----
+      { id:"dlc-whole-milk", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Whole Milk", nameEs:"Hel", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-low-fat-milk", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Low-Fat Milk", nameEs:"Lett", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-almond-milk", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Almond Milk", nameEs:"Almond", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-oat-milk", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Oat Milk", nameEs:"Oat", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-soy-milk", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Soy Milk", nameEs:"Soya", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-lactose-free-milk", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Lactose-Free Milk", nameEs:"Lactosefri", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-whipped-cream", store:"dlc", supplier:"PALS", category:"Bar: Milks", name:"Whipped cream", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-coconut-milk", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Coconut Milk", nameEs:"coconut milk", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-ice-cubes", store:"dlc", supplier:"Asko", category:"Bar: Frozen", name:"Ice Cubes", nameEs:"Ice cubes", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-frozen-pineapple", store:"dlc", supplier:"Asko", category:"Bar: Frozen", name:"Frozen Pineapple", nameEs:"Pineapple", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-frozen-strawberries", store:"dlc", supplier:"Asko", category:"Bar: Frozen", name:"Frozen Strawberries", nameEs:"Strawberry", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-frozen-mango", store:"dlc", supplier:"Asko", category:"Bar: Frozen", name:"Frozen Mango", nameEs:"Mango", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-frozen-blueberries", store:"dlc", supplier:"Asko", category:"Bar: Frozen", name:"Frozen Blueberries", nameEs:"Blueberry", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-frozen-passionfruit", store:"dlc", supplier:"Asko", category:"Bar: Frozen", name:"Frozen Passionfruit", nameEs:"Passionfruit", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-mint", store:"dlc", supplier:"Eugen", category:"Bar: Fruits", name:"Mint", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-oranges", store:"dlc", supplier:"Eugen", category:"Bar: Fruits", name:"Oranges", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-limes", store:"dlc", supplier:"Eugen", category:"Bar: Fruits", name:"Limes", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-ginger", store:"dlc", supplier:"Eugen", category:"Bar: Fruits", name:"Ginger", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-bananas-island-dream", store:"dlc", supplier:"Eugen", category:"Bar: Fruits", name:"Bananas (Island Dream)", nameEs:"Bananas (island dream)", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-salt", store:"dlc", supplier:"Asko", category:"Bar: Condiments & Tea", name:"Salt", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-pepper", store:"dlc", supplier:"Asko", category:"Bar: Condiments & Tea", name:"Pepper", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-sugar-packets", store:"dlc", supplier:"Asko", category:"Bar: Condiments & Tea", name:"Sugar packets", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-chai-tea", store:"dlc", supplier:"PALS", category:"Bar: Condiments & Tea", name:"Chai Tea", nameEs:"Chai tea", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-green-tea", store:"dlc", supplier:"PALS", category:"Bar: Condiments & Tea", name:"Green Tea", nameEs:"Green tea", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-earl-grey", store:"dlc", supplier:"PALS", category:"Bar: Condiments & Tea", name:"Earl Grey", nameEs:"Earl Gray", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-black-tea", store:"dlc", supplier:"PALS", category:"Bar: Condiments & Tea", name:"Black Tea", nameEs:"Black tea", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-chocolate-chips", store:"dlc", supplier:"Asko", category:"Bar: Condiments & Tea", name:"Chocolate Chips", nameEs:"Chocolate chips", unit:"bags", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-chocolate-sauce", store:"dlc", supplier:"PALS", category:"Bar: Condiments & Tea", name:"Chocolate Sauce", nameEs:"Chocolate sauce", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-table-spray", store:"dlc", supplier:"Asko", category:"Bar: Sundries", name:"Table spray", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-hand-soap-dispenser", store:"dlc", supplier:"Asko", category:"Bar: Sundries", name:"Hand soap dispenser", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-cutlery-napkins", store:"dlc", supplier:"Asko", category:"Bar: Sundries", name:"Cutlery Napkins", nameEs:"Servilletas cubiertos", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-candles", store:"dlc", supplier:"Asko", category:"Bar: Sundries", name:"Candles", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-fanta", store:"dlc", supplier:"Coca-Cola", category:"Bar: Sodas", name:"Fanta", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-sprite", store:"dlc", supplier:"Coca-Cola", category:"Bar: Sodas", name:"Sprite", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-coca-cola-zero", store:"dlc", supplier:"Coca-Cola", category:"Bar: Sodas", name:"Coca-Cola Zero", nameEs:"Coca cola zero", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-coca-cola", store:"dlc", supplier:"Coca-Cola", category:"Bar: Sodas", name:"Coca-Cola", nameEs:"Coca cola", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-apple-juice", store:"dlc", supplier:"Asko", category:"Bar: Sodas", name:"Apple Juice", nameEs:"Eplemost", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-iced-tea", store:"dlc", supplier:"Coca-Cola", category:"Bar: Sodas", name:"Fuze Tea", nameEs:"Iced tea", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-san-pellegrino", store:"dlc", supplier:"TBD", category:"Bar: Sodas", name:"San Pellegrino", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-ginger-beer", store:"dlc", supplier:"TBD", category:"Bar: Sodas", name:"Ginger Beer", nameEs:"Ginger beer", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-water-bonaqua", store:"dlc", supplier:"TBD", category:"Bar: Sodas", name:"Water (Bonaqua)", nameEs:"Bonaqua", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-kombucha", store:"dlc", supplier:"Empress", category:"Bar: Sodas", name:"Kombucha", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-tonic-water", store:"dlc", supplier:"TBD", category:"Bar: Sodas", name:"Tonic Water", nameEs:"Tonic", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-sparkling-water-farris", store:"dlc", supplier:"TBD", category:"Bar: Sodas", name:"Sparkling Water (Farris)", nameEs:"Farris", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-beer-keg", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"Beer Keg", unit:"kegs", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-corona", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"Corona", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-peroni", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"Peroni", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-ipa", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"IPA", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-blanc-witbier", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"Blanc (Witbier)", nameEs:"Blanc", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-bulmers", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"Bulmers", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-ginger-joe", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"Ginger Joe", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-godt", store:"dlc", supplier:"Service Grossisten", category:"Bar: Beer", name:"Godt", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1, placeholder:true },
+      { id:"dlc-verduzzo", store:"dlc", supplier:"Service Grossisten", category:"Bar: White Wine", name:"Verduzzo", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:24, parSun:24 },
+      { id:"dlc-pinot-grigio", store:"dlc", supplier:"Service Grossisten", category:"Bar: White Wine", name:"Pinot Grigio", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:24, parSun:24 },
+      { id:"dlc-chablis", store:"dlc", supplier:"Service Grossisten", category:"Bar: White Wine", name:"Chablis", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-sancerre", store:"dlc", supplier:"Service Grossisten", category:"Bar: White Wine", name:"Sancerre", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-rose-wine", store:"dlc", supplier:"Service Grossisten", category:"Bar: White Wine", name:"Rosé Wine", nameEs:"Vino Rosato", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:18, parSun:18 },
+      { id:"dlc-prosecco", store:"dlc", supplier:"Service Grossisten", category:"Bar: White Wine", name:"Prosecco", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:12, parSun:12 },
+      { id:"dlc-riesling", store:"dlc", supplier:"Service Grossisten", category:"Bar: White Wine", name:"Riesling", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:0, parSun:0 },
+      { id:"dlc-malbec", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Malbec", nameEs:"Malbech", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:24, parSun:24 },
+      { id:"dlc-ripasso", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Ripasso", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:18, parSun:18 },
+      { id:"dlc-ontanon", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Ontanon", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:12, parSun:12 },
+      { id:"dlc-chianti-classico-2013", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Chianti Classico 2013", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-chianti-riserva-2016", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Chianti Riserva 2016", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
+      { id:"dlc-barolo", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Barolo", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-barbera-d-alba", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Barbera D'Alba", nameEs:"Barbera D´Alba", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-amarone", store:"dlc", supplier:"Service Grossisten", category:"Bar: Red Wine", name:"Amarone", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-tequila", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Tequila", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-vodka", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Vodka", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-gin", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Gin", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-jameson", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Jameson", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:0.33, parSun:0.33 },
+      { id:"dlc-jack-daniel-s", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Jack Daniel's", nameEs:"Jack daniels", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:0.33, parSun:0.33 },
+      { id:"dlc-rum", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Rum", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-triple-sec", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Triple Sec", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-limoncello", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Limoncello", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
+      { id:"dlc-aperol", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Aperol", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:4, parSun:4 },
+      { id:"dlc-jagermeister", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Jägermeister", nameEs:"Jager meister", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:0.33, parSun:0.33 },
+      { id:"dlc-baileys", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Baileys", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:0.33, parSun:0.33 },
+      { id:"dlc-cognac", store:"dlc", supplier:"Service Grossisten", category:"Bar: Liquor", name:"Cognac", nameEs:"Congac", unit:"bottles", unitsPerBox:null, weightPerUnit:null, parWed:0.33, parSun:0.33 },
+    ];
+  }
+
+  /* ============================= STORAGE ============================= */
+
+  function readJSON(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    }catch(e){ return fallback; }
+  }
+  function writeJSON(key, value){
+    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
+    scheduleCloudSync();
+  }
+
+  /* ============================= CLOUD BACKUP (Firebase) =============================
+     localStorage stays the fast, synchronous source of truth for every read/write in
+     the app (nothing else changes) - this layer just mirrors the whole bonita_ol_*
+     slice of localStorage up to Firestore under the current anonymous user, and
+     restores it on a fresh browser/device. If Firebase isn't configured yet, or the
+     network's unavailable, the app works exactly as before (local-only). */
+
+  // TODO: replace with your real project config from the Firebase console
+  // (Project settings -> General -> "Your apps" -> SDK setup and configuration).
+  var FIREBASE_CONFIG = {
+    apiKey: "REPLACE_ME",
+    authDomain: "REPLACE_ME.firebaseapp.com",
+    projectId: "REPLACE_ME",
+    storageBucket: "REPLACE_ME.appspot.com",
+    messagingSenderId: "REPLACE_ME",
+    appId: "REPLACE_ME"
+  };
+
+  var cloudReady = false;
+  var cloudUid = null;
+  var cloudSyncTimer = null;
+  var cloudStatus = "offline"; // "offline" | "connecting" | "synced" | "error"
+
+  function isFirebaseConfigured(){
+    return typeof firebase !== "undefined" && FIREBASE_CONFIG.apiKey !== "REPLACE_ME";
+  }
+
+  function allLocalKeys(){
+    var keys = [];
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      if(k && k.indexOf("bonita_ol_") === 0) keys.push(k);
+    }
+    return keys;
+  }
+
+  function setCloudStatus(s){
+    cloudStatus = s;
+    var el = document.querySelector("[data-role=cloud-status]");
+    if(el) el.textContent = s === "synced" ? "☁ Saved" : s === "connecting" ? "☁ Saving…" : s === "error" ? "⚠ Not saved to cloud" : "";
+  }
+
+  // Debounced so a burst of edits (typing, etc.) becomes one write, not one per keystroke.
+  function scheduleCloudSync(){
+    if(!cloudReady) return;
+    clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = setTimeout(pushToCloud, 800);
+  }
+
+  function pushToCloud(){
+    if(!cloudReady || !cloudUid) return;
+    var blob = {};
+    allLocalKeys().forEach(function(k){ blob[k] = localStorage.getItem(k); });
+    setCloudStatus("connecting");
+    firebase.firestore().collection("users").doc(cloudUid).set({ data: blob, updatedAt: Date.now() })
+      .then(function(){ setCloudStatus("synced"); })
+      .catch(function(){ setCloudStatus("error"); });
+  }
+
+  // Runs once at startup, before the first render: try to restore a previous save
+  // for this anonymous user into localStorage, then let the app boot normally.
+  function initCloudSync(onDone){
+    if(!isFirebaseConfigured()){ onDone(); return; }
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var timedOut = false;
+      var timer = setTimeout(function(){ timedOut = true; onDone(); }, 4000);
+
+      firebase.auth().signInAnonymously().then(function(cred){
+        cloudUid = cred.user.uid;
+        return firebase.firestore().collection("users").doc(cloudUid).get();
+      }).then(function(doc){
+        if(doc && doc.exists){
+          var blob = doc.data().data || {};
+          Object.keys(blob).forEach(function(k){ localStorage.setItem(k, blob[k]); });
+        }
+        cloudReady = true;
+        setCloudStatus("synced");
+        if(!timedOut){ clearTimeout(timer); onDone(); }
+      }).catch(function(){
+        setCloudStatus("error");
+        if(!timedOut){ clearTimeout(timer); onDone(); }
+      });
+    }catch(e){
+      onDone();
+    }
+  }
+
+  function loadCatalog(){
+    var cat = readJSON(CATALOG_KEY, null);
+    if(!cat){ cat = defaultCatalog(); writeJSON(CATALOG_KEY, cat); }
+    return cat;
+  }
+  function saveCatalog(cat){ writeJSON(CATALOG_KEY, cat); }
+
+  function sessionKey(store, cycle){ return SESSION_KEY_PREFIX + store + "_" + cycle; }
+  function loadSession(store, cycle){
+    var session = readJSON(sessionKey(store, cycle), { items:{}, staffName:null, startedAt:null });
+    if(!session.collapsed) session.collapsed = {}; // supplier-group collapse overrides
+    return session;
+  }
+  function saveSession(store, cycle, session){ writeJSON(sessionKey(store, cycle), session); }
+  function clearSession(store, cycle){ try{ localStorage.removeItem(sessionKey(store, cycle)); }catch(e){} }
+
+  // A supplier group auto-collapses once every item in it is touched
+  // (entered or skipped) — but a manual tap always overrides that default,
+  // in either direction, until the user taps it again.
+  function supplierCollapsed(session, supplier, remaining){
+    var explicit = session.collapsed ? session.collapsed[supplier] : undefined;
+    if(typeof explicit === "boolean") return explicit;
+    return remaining === 0;
+  }
+
+  function loadAppState(){ return readJSON(APP_STATE_KEY, null); }
+  function saveAppState(s){ writeJSON(APP_STATE_KEY, s); }
+
+  /* ============================= STATE ============================= */
+
+  var catalog; // assigned in boot(), after any cloud restore has had a chance to run first
+
+  var state = {
+    screen: "store",       // store | name | order | item-info | success
+    store: null,
+    staffName: null,
+    cycle: nearestCycle(),
+    itemInfoFilter: null, // set to the current store when Item Info opens; no combined "all" view
+    lastSubmission: null,
+    confirmSubmitOpen: false,
+    confirmResetOpen: false,
+    reorderSupplier: null, // supplier name currently in drag-to-reorder mode on Item Info, or null
+    searchQuery: "",
+    itemInfoSearch: "",
+    expandedInfo: {}, // itemId -> true, which rows have their info panel open (transient, not persisted)
+    customOnHand: {}, // itemId -> true, rows switched from the quick-pick dropdown to free typing
+    openOnHandPicker: null, // itemId of the one custom dropdown currently open, or null
+    printData: null,   // {storeName, cycle, staffName, date, items:[{item,order}]} for the print screen
+    printReturnTo: "order",
+    settingsReturnTo: "store"
+  };
+
+  function restoreAppState(){
+    var saved = loadAppState();
+    if(saved && saved.store && (saved.screen === "order" || saved.screen === "item-info")){
+      state.store = saved.store;
+      state.staffName = saved.staffName || null;
+      state.cycle = saved.cycle || nearestCycle();
+      state.screen = saved.screen;
+    }
+  }
+
+  function nearestCycle(){
+    // Wed = 3, Sun = 0. Default to whichever comes first from today.
+    var day = new Date().getDay();
+    var toWed = (3 - day + 7) % 7;
+    var toSun = (0 - day + 7) % 7;
+    return toSun <= toWed ? "sun" : "wed";
+  }
+
+  function persistAppState(){
+    saveAppState({ screen: state.screen, store: state.store, staffName: state.staffName, cycle: state.cycle });
+  }
+
+  function go(screen){
+    state.screen = screen;
+    persistAppState();
+    render();
+    window.scrollTo(0,0);
+  }
+
+  /* ============================= HELPERS ============================= */
+
+  function fmt(n){
+    return Number(n||0).toLocaleString("pt-PT", { maximumFractionDigits: 1 });
+  }
+  function itemsForStore(store){ return catalog.filter(function(i){ return i.store === store; }); }
+  function parFor(item, cycle){ return cycle === "wed" ? item.parWed : item.parSun; }
+  function cycleLabel(cycle){ return cycle === "wed" ? "Wed" : "Sun"; }
+
+  // Accent-insensitive search (á/ç/etc. shouldn't have to be typed exactly)
+  // across name, Spanish name, supplier, category and unit.
+  function normalizeSearch(s){
+    return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+  function matchesSearch(item, query){
+    if(!query) return true;
+    var q = normalizeSearch(query);
+    var haystack = normalizeSearch([item.name, item.nameEs, item.supplier, item.category, item.unit].filter(Boolean).join(" "));
+    return haystack.indexOf(q) !== -1;
+  }
+  function escHtml(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function entryFor(session, item){
+    if(!session.items[item.id]){
+      session.items[item.id] = { onHand:"", order:"", manualOrder:false, skipped:false };
+    }
+    return session.items[item.id];
+  }
+
+  function recomputeOrder(entry, item){
+    if(entry.manualOrder) return;
+    var onHand = entry.onHand === "" ? 0 : parseFloat(entry.onHand) || 0;
+    var par = parFor(item, state.cycle);
+    var suggested = Math.max(par - onHand, 0);
+    entry.order = String(suggested);
+  }
+
+  // Quick-pick values for the "You have" dropdown: 0-20 covers most
+  // real counts, a few round numbers beyond that for high-count items,
+  // and the item's own par targets (even fractional ones, like 0.5) so
+  // "right at par" is always one tap away. The current value is folded
+  // in too, so switching back from manual entry never hides what's there.
+  function onHandOptions(item, currentValue){
+    var opts = [];
+    for(var i=0;i<=10;i++) opts.push(i);
+    [item.parWed, item.parSun].forEach(function(p){
+      if(p!=null && opts.indexOf(p)===-1) opts.push(p);
+    });
+    var cv = parseFloat(currentValue);
+    if(currentValue !== "" && !isNaN(cv) && opts.indexOf(cv)===-1) opts.push(cv);
+    opts.sort(function(a,b){ return a-b; });
+    return opts;
+  }
+
+  function isTouched(entry){
+    return entry.skipped || entry.onHand !== "";
+  }
+
+  // Single rounding rule: if unitsPerBox is set and Order isn't a multiple
+  // of it, it always rounds UP to the nearest multiple. Purely informational
+  // — never blocks submission.
+  function packNote(item, entry){
+    if(!item.unitsPerBox) return null;
+    var order = parseFloat(entry.order);
+    if(!order || order <= 0) return null;
+    var m = item.unitsPerBox;
+    var remainder = order % m;
+    if(Math.abs(remainder) < 1e-6 || Math.abs(remainder - m) < 1e-6) return null;
+    var rounded = Math.ceil(order / m) * m;
+    return "Rounds up to " + fmt(rounded) + " (box of " + m + ").";
+  }
+
+  // Live weight reference — only meaningful (and only shown) when the item
+  // has a weightPerUnit set. Order is entered in the item's natural unit.
+  function liveCalc(item, entry){
+    if(!item.weightPerUnit) return null;
+    var order = parseFloat(entry.order) || 0;
+    var total = order * item.weightPerUnit;
+    return fmt(total) + "g total";
+  }
+
+  // Box weight is derived, never stored — unitsPerBox × weightPerUnit.
+  function boxWeight(item){
+    if(!item.unitsPerBox || !item.weightPerUnit) return null;
+    return item.unitsPerBox * item.weightPerUnit;
+  }
+
+  /* ============================= RENDER ROOT ============================= */
+
+  var app = document.getElementById("app");
+
+  function render(){
+    var html = "";
+    if(state.screen === "store") html = renderStoreSelect();
+    else if(state.screen === "name") html = renderNameSelect();
+    else if(state.screen === "order") html = renderOrderList();
+    else if(state.screen === "item-info") html = renderItemInfo();
+    else if(state.screen === "success") html = renderSuccess();
+    else if(state.screen === "print") html = renderPrintView();
+    else if(state.screen === "settings") html = renderSettingsPreview();
+    app.innerHTML = html;
+    updateStickyOffsets();
+    initSortable();
+  }
+
+  // The order list header (store/search/cycle/progress/columns) and the
+  // Item Info header (store/search) are different heights, and both can
+  // change height on their own (search clear button appearing, etc.) — so
+  // rather than guess a pixel offset for where the supplier header should
+  // stick, measure what's actually on screen after every render.
+  // Only the thin bar right above the list (column labels on the order
+  // list, filter tabs on Item Info) stays pinned while scrolling — the
+  // heavier identity/search/cycle block above it scrolls away, so a small
+  // phone screen gives the actual list as much room as possible. The
+  // supplier header sticks right below whichever thin bar is present.
+  function updateStickyOffsets(){
+    var anchor = app.querySelector(".column-header") || app.querySelector(".filter-tabs");
+    var anchorH = anchor ? anchor.getBoundingClientRect().height : 0;
+    app.style.setProperty("--content-top", anchorH + "px");
+  }
+
+  // Reordering permutes the item's *position in the catalog array itself*
+  // rather than adding a sort-index field — items keep their absolute
+  // "slots" (so other suppliers/stores are untouched) but the slots
+  // belonging to this store+supplier get filled with the new sequence.
+  function reorderSupplierItems(store, supplier, newOrderIds){
+    var slots = [];
+    catalog.forEach(function(item, idx){
+      if(item.store === store && item.supplier === supplier) slots.push(idx);
+    });
+    var byId = {};
+    catalog.forEach(function(item){ byId[item.id] = item; });
+    slots.forEach(function(slotIdx, i){
+      if(newOrderIds[i] && byId[newOrderIds[i]]) catalog[slotIdx] = byId[newOrderIds[i]];
+    });
+  }
+
+  // SortableJS (loaded via CDN) drives the actual touch/mouse dragging —
+  // native HTML5 drag-and-drop barely works on touchscreens, but a real
+  // drag library handles that properly. Re-initializes whenever the
+  // reorder list is freshly rendered (a new DOM node each time).
+  function initSortable(){
+    var container = app.querySelector(".reorder-list");
+    if(!container || typeof Sortable === "undefined") return;
+    new Sortable(container, {
+      handle: ".drag-handle",
+      animation: 150,
+      onEnd: function(){
+        var ids = Array.prototype.map.call(container.querySelectorAll("[data-item]"), function(el){
+          return el.getAttribute("data-item");
+        });
+        reorderSupplierItems(state.itemInfoFilter, state.reorderSupplier, ids);
+        saveCatalog(catalog);
+      }
+    });
+  }
+
+  /* ============================= SCREEN 1: STORE SELECT ============================= */
+
+  function renderStoreSelect(){
+    var cards = STORES.map(function(s){
+      return '<div class="choice-card" data-action="pick-store" data-store="'+s.id+'">'+
+        '<div class="icon">'+s.icon+'</div>'+
+        '<div class="label">'+s.name+'</div>'+
+        '<div class="sub">Wed &amp; Sun ordering</div>'+
+      '</div>';
+    }).join("");
+    return (
+      '<div class="centered-screen">'+
+        '<div class="heading">'+
+          '<div class="wordmark">Bonita</div>'+
+          '<h1>Which location?</h1>'+
+          '<div class="script">let\'s see what the shelves need</div>'+
+        '</div>'+
+        '<div class="choice-grid">'+cards+'</div>'+
+        '<div class="steps"><span class="active"></span><span></span></div>'+
+        '<button class="link-btn" data-action="open-settings">⚙ Settings (preview)</button>'+
+      '</div>'
+    );
+  }
+
+  // Visual concept only — nothing here is wired up or persisted. It exists
+  // to show what per-company configuration would look like if this became
+  // a product other businesses could set up for themselves, instead of
+  // cycles/suppliers/locations/staff being fixed in the code as they are
+  // today for Bonita specifically.
+  function renderSettingsPreview(){
+    function section(title, hint, items, addLabel){
+      var rows = items.map(function(i){
+        return '<div class="settings-row"><span>'+i+'</span><button class="settings-row-btn" disabled>Edit</button></div>';
+      }).join("");
+      return (
+        '<div class="settings-section">'+
+          '<h3>'+title+'</h3>'+
+          '<p class="settings-hint">'+hint+'</p>'+
+          rows+
+          '<button class="settings-add" disabled>+ '+addLabel+'</button>'+
+        '</div>'
+      );
+    }
+    var allSuppliers = [];
+    catalog.forEach(function(i){ if(allSuppliers.indexOf(i.supplier)===-1) allSuppliers.push(i.supplier); });
+
+    return (
+      '<div class="back-row" data-action="close-settings">‹ Back</div>'+
+      '<div class="settings-page">'+
+        '<div class="settings-banner">'+
+          '<b>Concept preview</b> — none of this is editable yet. This is what letting each business '+
+          'configure their own setup could look like, instead of everything below being fixed in the '+
+          'code for Bonita specifically.'+
+        '</div>'+
+        '<h1 class="settings-title">Settings</h1>'+
+        section("Order cycles", "How often this business orders, and what to call each cycle.", ["Wed", "Sun"], "Add a cycle")+
+        section("Locations", "The store(s) staff pick from at the start.", STORES.map(function(s){return s.name;}), "Add a location")+
+        section("Providers", "Every supplier currently used across the catalog.", allSuppliers, "Add a provider")+
+        section("Staff", "Names shown on the name-select screen — per location, since different people fill out each one.", STORES.reduce(function(acc, s){
+          return acc.concat((STAFF[s.id] || []).map(function(n){ return n + " (" + s.name + ")"; }));
+        }, []), "Add a staff member")+
+        '<div class="settings-section">'+
+          '<h3>Reset this device</h3>'+
+          '<p class="settings-hint">This one is real, not part of the concept preview above — useful while '+
+            'testing. Clears every in-progress list, submission, and catalog edit saved in this browser.</p>'+
+          '<button class="settings-danger" data-action="request-reset">🗑 Reset everything on this device</button>'+
+        '</div>'+
+      '</div>'+
+      (state.confirmResetOpen ? renderResetConfirmSheet() : '')
+    );
+  }
+
+  /* ============================= SCREEN 2: NAME SELECT ============================= */
+
+  function renderNameSelect(){
+    var rows = (STAFF[state.store] || []).map(function(n){
+      return '<div class="name-row" data-action="pick-name" data-name="'+n+'">'+
+        '<span>'+n+'</span><span class="chevron">›</span>'+
+      '</div>';
+    }).join("");
+    var storeName = STORES.filter(function(s){return s.id===state.store;})[0].name;
+    return (
+      '<div class="back-row" data-action="back-to-store">‹ '+storeName+'</div>'+
+      '<div class="centered-screen">'+
+        '<div class="heading">'+
+          '<h1>Who\'s filling this out?</h1>'+
+          '<div class="script">just so we know who to thank</div>'+
+        '</div>'+
+        '<div class="name-list">'+rows+'</div>'+
+        '<div class="steps"><span></span><span class="active"></span></div>'+
+      '</div>'
+    );
+  }
+
+  /* ============================= SCREEN 3: ORDER LIST ============================= */
+
+  // Two-level grouping: supplier (the brief's required grouping), then
+  // category as a sub-header where the catalog has one — mirrors how the
+  // real Café order sheets are laid out. Items with no category (e.g. the
+  // still-placeholder DLC list) fall into one unlabeled bucket per supplier.
+  // Fixed display order for known suppliers (Eugen before Asko), independent
+  // of whatever order they happen to appear in the catalog array. Anything
+  // not listed here falls in after, in first-appearance order.
+  var SUPPLIER_ORDER = ["Eugen", "Asko"];
+
+  // Suppliers already in use for a store — drives the Supplier dropdown on
+  // Item Info. Reassigning to a new supplier that's never been used before
+  // isn't offered here on purpose; that's a bigger change than a per-item
+  // fix and is worth a real conversation, not a stray typo in a dropdown.
+  function suppliersForStore(store){
+    var seen = {};
+    var list = [];
+    catalog.forEach(function(i){
+      if(i.store === store && !seen[i.supplier]){ seen[i.supplier] = true; list.push(i.supplier); }
+    });
+    list.sort(function(a, b){
+      var ia = SUPPLIER_ORDER.indexOf(a), ib = SUPPLIER_ORDER.indexOf(b);
+      if(ia === -1) ia = SUPPLIER_ORDER.length;
+      if(ib === -1) ib = SUPPLIER_ORDER.length;
+      return ia - ib;
+    });
+    return list;
+  }
+
+  // "Bar" (and its sub-categories, "Bar: Wine" etc.) is a department, not a
+  // food-type category like the rest — it gets its own louder treatment so
+  // it doesn't blend into Baking/Meat & Fish/etc while scrolling a supplier
+  // that carries both kinds of items.
+  function renderCategoryHead(category){
+    if(!category) return "";
+    if(category === "Bar" || category.indexOf("Bar:") === 0){
+      return '<div class="category-head category-head-bar">🍹 '+category+'</div>';
+    }
+    return '<div class="category-head">'+category+'</div>';
+  }
+
+  function groupBySupplier(items){
+    var supplierOrder = [];
+    var suppliers = {};
+    items.forEach(function(item){
+      if(!suppliers[item.supplier]){
+        suppliers[item.supplier] = { supplier:item.supplier, catOrder:[], cats:{} };
+        supplierOrder.push(item.supplier);
+      }
+      var sg = suppliers[item.supplier];
+      var key = item.category || "";
+      if(!sg.cats[key]){ sg.cats[key] = { category: item.category || null, items:[] }; sg.catOrder.push(key); }
+      sg.cats[key].items.push(item);
+    });
+    supplierOrder.sort(function(a, b){
+      var ia = SUPPLIER_ORDER.indexOf(a), ib = SUPPLIER_ORDER.indexOf(b);
+      if(ia === -1) ia = SUPPLIER_ORDER.length;
+      if(ib === -1) ib = SUPPLIER_ORDER.length;
+      return ia - ib;
+    });
+    return supplierOrder.map(function(s){
+      var sg = suppliers[s];
+      return { supplier:s, categories: sg.catOrder.map(function(k){ return sg.cats[k]; }) };
+    });
+  }
+
+  function renderOrderList(){
+    var items = itemsForStore(state.store);
+    var session = loadSession(state.store, state.cycle);
+    items.forEach(function(item){
+      var entry = entryFor(session, item);
+      recomputeOrder(entry, item);
+    });
+    saveSession(state.store, state.cycle, session);
+
+    var touchedCount = items.filter(function(i){ return isTouched(entryFor(session,i)); }).length;
+    var pct = items.length ? Math.round((touchedCount/items.length)*100) : 0;
+    var storeName = STORES.filter(function(s){return s.id===state.store;})[0].name;
+
+    // Search filters which rows render, but progress/session/submit always
+    // reason about the full item list, not just what's currently visible.
+    var visibleItems = items.filter(function(i){ return matchesSearch(i, state.searchQuery); });
+    var groups = groupBySupplier(visibleItems);
+    var groupsHtml = groups.map(function(g){
+      var allItems = [];
+      g.categories.forEach(function(c){ allItems = allItems.concat(c.items); });
+      var remaining = allItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      // Search always shows full results, regardless of collapse state.
+      var collapsed = state.searchQuery ? false : supplierCollapsed(session, g.supplier, remaining);
+      var catsHtml = collapsed ? "" : g.categories.map(function(c){
+        var rows = c.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("");
+        return renderCategoryHead(c.category) + rows;
+      }).join("");
+      return (
+        '<div class="supplier-group">'+
+          '<button class="supplier-head" data-action="toggle-supplier" data-supplier="'+g.supplier+'">'+
+            '<h2>'+g.supplier+'</h2>'+
+            '<span class="supplier-head-right"><span class="count">'+
+              (remaining===0 ? "all reviewed" : remaining+" left")+
+            '</span><span class="chevron">'+(collapsed?"▸":"▾")+'</span></span>'+
+          '</button>'+
+          catsHtml+
+        '</div>'
+      );
+    }).join("");
+    if(visibleItems.length === 0){
+      groupsHtml = '<div class="empty-search">No items match "'+escHtml(state.searchQuery)+'".</div>';
+    }
+
+    var confirmModal = state.confirmSubmitOpen ? renderConfirmSheet(items.length - touchedCount) : "";
+
+    return (
+      '<div class="app-header">'+
+        '<div class="row1">'+
+          '<div class="identity"><span class="store">'+storeName+'</span><span class="staff">'+state.staffName+'</span></div>'+
+          '<div class="header-actions">'+
+            '<button class="icon-btn" data-action="open-item-info" title="Item catalog">📖</button>'+
+            '<button class="icon-btn" data-action="open-settings" title="Settings (preview)">⚙</button>'+
+            '<button class="icon-btn" data-action="switch-user" title="Switch store / name">⇄</button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="search-row">'+
+          '<input type="text" class="search-input" placeholder="Search items…" value="'+escHtml(state.searchQuery)+'" data-action="search-query">'+
+          (state.searchQuery ? '<button class="search-clear" data-action="clear-search" title="Clear search">✕</button>' : '')+
+        '</div>'+
+        '<div class="cycle-toggle">'+
+          '<button class="'+(state.cycle==='wed'?'active':'')+'" data-action="set-cycle" data-cycle="wed">Wed cycle</button>'+
+          '<button class="'+(state.cycle==='sun'?'active':'')+'" data-action="set-cycle" data-cycle="sun">Sun cycle</button>'+
+        '</div>'+
+        '<div class="progress-line"><span class="num">'+touchedCount+' of '+items.length+' reviewed</span>'+
+          '<div class="progress-bar"><i style="width:'+pct+'%"></i></div></div>'+
+        '<div class="column-header row-grid"><span></span><span></span><span>Have</span><span>Order</span><span></span></div>'+
+      '</div>'+
+      '<div class="list-body">'+groupsHtml+'</div>'+
+      '<div class="bottom-bar">'+
+        '<button class="preview-btn" data-action="preview-print">🖨 Preview order</button>'+
+        '<button class="submit-btn" data-action="request-submit">Submit list</button>'+
+      '</div>'+
+      confirmModal
+    );
+  }
+
+  // "You have" defaults to a compact quick-pick dropdown (tap instead of
+  // typing + no keyboard popping up) with the full free-text field kept one
+  // tap away via "Other…", for whatever number isn't on the list.
+  // Native <select> opens the OS's own picker (a full-width wheel on iOS,
+  // a big modal list on Android) - no CSS can shrink that. This is a small
+  // custom dropdown instead: same width as the box, ~3 rows visible with
+  // scroll for the rest, fully under our control.
+  function renderOnHandCell(item, entry){
+    if(state.customOnHand[item.id]){
+      return '<input class="cell-input" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="0" '+
+        'value="'+entry.onHand+'" data-action="input-onhand" data-item="'+item.id+'">';
+    }
+    var isOpen = state.openOnHandPicker === item.id;
+    var displayVal = entry.onHand === "" ? "–" : fmt(parseFloat(entry.onHand));
+    var opts = onHandOptions(item, entry.onHand);
+    var optionsHtml = opts.map(function(o){
+      return '<button class="onhand-option'+(String(o)===String(entry.onHand)?' active':'')+'" '+
+        'data-action="pick-onhand" data-item="'+item.id+'" data-value="'+o+'">'+fmt(o)+'</button>';
+    }).join("") + '<button class="onhand-option" data-action="pick-onhand-other" data-item="'+item.id+'">Other…</button>';
+
+    return (
+      '<div class="onhand-picker">'+
+        '<button class="cell-input onhand-trigger" data-action="toggle-onhand-picker" data-item="'+item.id+'">'+displayVal+'</button>'+
+        (isOpen ? '<div class="onhand-dropdown"><div class="onhand-dropdown-scroll">'+optionsHtml+'</div></div>' : '')+
+      '</div>'
+    );
+  }
+
+  function renderItemCard(item, entry){
+    var par = parFor(item, state.cycle);
+    var dotClass = entry.skipped ? "skipped" : (isTouched(entry) ? "done" : "");
+    var note = packNote(item, entry);
+    var calc = liveCalc(item, entry);
+
+    var noteParts = [];
+    if(calc) noteParts.push('<span>≈ '+calc+'</span>');
+    if(note) noteParts.push('<span class="note-warn">📦 '+note+'</span>');
+    if(entry.manualOrder) noteParts.push('<button class="reset-link" data-action="reset-auto" data-item="'+item.id+'">↺ reset to par − on hand</button>');
+    var noteLine = noteParts.length ? '<div class="row-note">'+noteParts.join('')+'</div>' : '';
+    var infoOpen = !!state.expandedInfo[item.id];
+    var infoPanel = infoOpen ? renderInfoPanel(item) : "";
+
+    return (
+      '<div class="item-row-wrap '+(entry.skipped?'is-skipped':'')+'" data-item="'+item.id+'">'+
+        '<div class="item-row row-grid">'+
+          '<span class="status-dot '+dotClass+'"></span>'+
+          '<div class="row-name">'+
+            '<button class="item-name" data-action="toggle-info" data-item="'+item.id+'">'+item.name+
+              '<span class="info-caret">'+(infoOpen?"▾":"ⓘ")+'</span></button>'+
+            '<div class="row-hint">Par ('+cycleLabel(state.cycle)+'): '+fmt(par)+' '+item.unit+
+              (item.placeholder ? ' <span class="est-badge" title="No par was given in the source sheet — this is a guess, edit it on Item Info">est.</span>' : '')+
+              (item.nameEs ? ' <span class="name-es">· '+item.nameEs+'</span>' : '')+
+            '</div>'+
+          '</div>'+
+          '<div class="cell-wrap">'+renderOnHandCell(item, entry)+'</div>'+
+          '<div class="cell-wrap"><input class="cell-input order" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="0" '+
+            'value="'+entry.order+'" data-action="input-order" data-item="'+item.id+'">'+
+            (entry.manualOrder ? '<span class="manual-dot" title="manually entered"></span>' : '')+
+          '</div>'+
+          '<button class="skip-btn '+(entry.skipped?'active':'')+'" data-action="toggle-skip" data-item="'+item.id+'">'+
+            (entry.skipped ? "↺" : "Skip")+
+          '</button>'+
+        '</div>'+
+        noteLine+
+        infoPanel+
+      '</div>'
+    );
+  }
+
+  // Read-only reference panel — unit, box size, weight, and the derived
+  // box weight — opened by tapping the item name, so staff can check
+  // "how much is a box of this" without leaving the order list.
+  function renderInfoPanel(item){
+    var bw = boxWeight(item);
+    return (
+      '<div class="info-panel">'+
+        '<div class="info-row"><span>Supplier</span><b>'+item.supplier+(item.category?' · '+item.category:'')+'</b></div>'+
+        '<div class="info-row"><span>Unit</span><b>'+item.unit+'</b></div>'+
+        '<div class="info-row"><span>Units / box</span><b>'+(item.unitsPerBox==null ? "—" : fmt(item.unitsPerBox))+'</b></div>'+
+        '<div class="info-row"><span>Weight / unit</span><b>'+(item.weightPerUnit==null ? "—" : fmt(item.weightPerUnit)+" g")+'</b></div>'+
+        '<div class="info-row"><span>Box weight</span><b>'+(bw==null ? "—" : fmt(bw)+" g")+'</b></div>'+
+        '<button class="info-edit-link" data-action="edit-in-catalog" data-item="'+item.id+'">Edit these on Item Info →</button>'+
+      '</div>'
+    );
+  }
+
+  function renderConfirmSheet(untouchedCount){
+    return (
+      '<div class="overlay" data-action="dismiss-overlay">'+
+        '<div class="sheet" data-action="noop">'+
+          '<h3>Submit this list?</h3>'+
+          '<p>'+untouchedCount+' item'+(untouchedCount===1?'':'s')+' on this list '+(untouchedCount===1?'hasn\'t':'haven\'t')+' been entered or skipped yet. You can still submit — nothing blocks it — but take a glance first.</p>'+
+          '<div class="sheet-actions">'+
+            '<button class="btn-ghost" data-action="cancel-submit">Keep working</button>'+
+            '<button class="btn-primary" data-action="confirm-submit">Submit anyway</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+
+  function renderResetConfirmSheet(){
+    return (
+      '<div class="overlay" data-action="dismiss-reset">'+
+        '<div class="sheet" data-action="noop">'+
+          '<h3>Reset this device?</h3>'+
+          '<p>This clears everything saved in this browser — every in-progress list, your submission '+
+            'history, and any catalog edits you made here. It brings the app back to a fresh install. '+
+            'This can\'t be undone.</p>'+
+          '<div class="sheet-actions">'+
+            '<button class="btn-ghost" data-action="dismiss-reset">Cancel</button>'+
+            '<button class="btn-primary" data-action="confirm-reset">Reset everything</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+
+  // Wipes every bonita_ol_* key regardless of exact naming (session keys are
+  // per store+cycle) so this stays correct even as new keys get added later.
+  function resetEverything(){
+    var keysToRemove = [];
+    for(var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      if(k && k.indexOf("bonita_ol_") === 0) keysToRemove.push(k);
+    }
+    keysToRemove.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
+    try{ location.reload(); }catch(e){}
+    // Fallback in case a full reload gets blocked by the viewer sandbox
+    // (window.print() was, once) - the data is already wiped either way,
+    // so re-seed in memory and jump back to the start so it's visible too.
+    catalog = defaultCatalog();
+    state.store = null; state.staffName = null; state.lastSubmission = null;
+    state.expandedInfo = {}; state.customOnHand = {}; state.openOnHandPicker = null;
+    state.confirmResetOpen = false; state.confirmSubmitOpen = false; state.printData = null;
+    state.screen = "store";
+    render();
+  }
+
+  /* ============================= SCREEN 4: ITEM INFO ============================= */
+
+  function renderItemInfo(){
+    // Always scoped to one store — a combined view made same-named items
+    // (Eggs, Garlic, Chicken...) show up twice with only a small store
+    // label to tell them apart, which read as confusing duplicates.
+    var filter = state.itemInfoFilter || state.store || STORES[0].id;
+    var items = catalog.filter(function(i){ return i.store===filter; });
+    items = items.filter(function(i){ return matchesSearch(i, state.itemInfoSearch); });
+    var groups = groupBySupplier(items);
+    var groupsHtml = groups.map(function(g){
+      var isReordering = state.reorderSupplier === g.supplier;
+      var reorderBtn = '<button class="reorder-btn" data-action="'+(isReordering?"exit-reorder":"enter-reorder")+'" data-supplier="'+g.supplier+'">'+
+        (isReordering ? "Done" : "⇅ Reorder") + '</button>';
+      var bodyHtml;
+      if(isReordering){
+        var flatItems = [];
+        g.categories.forEach(function(c){ flatItems = flatItems.concat(c.items); });
+        bodyHtml = '<p class="reorder-hint">Drag items into the order you actually walk past them — this ignores category, since your shelves don\'t.</p>'+
+          '<div class="reorder-list">'+
+            flatItems.map(function(item){
+              return '<div class="reorder-row" data-item="'+item.id+'">'+
+                '<span class="drag-handle">⠿</span>'+
+                '<span class="reorder-name">'+item.name+'</span>'+
+              '</div>';
+            }).join("")+
+          '</div>';
+      } else {
+        bodyHtml = g.categories.map(function(c){
+          var rows = c.items.map(renderCatalogCard).join("");
+          return renderCategoryHead(c.category) + rows;
+        }).join("");
+      }
+      return '<div class="supplier-group"><div class="supplier-head"><h2>'+g.supplier+'</h2>'+reorderBtn+'</div>'+bodyHtml+'</div>';
+    }).join("");
+    if(items.length === 0){
+      groupsHtml = '<div class="empty-search">No items match "'+escHtml(state.itemInfoSearch)+'".</div>';
+    }
+    var filterStoreName = STORES.filter(function(s){return s.id===filter;})[0].name;
+
+    return (
+      '<div class="app-header">'+
+        '<div class="row1">'+
+          '<div class="identity"><span class="store">Item Catalog — '+filterStoreName+'</span><span class="staff">unit, box size &amp; par targets</span></div>'+
+          '<div class="header-actions"><button class="icon-btn" data-action="close-item-info">✕</button></div>'+
+        '</div>'+
+        '<div class="search-row">'+
+          '<input type="text" class="search-input" placeholder="Search items…" value="'+escHtml(state.itemInfoSearch)+'" data-action="search-catalog">'+
+          (state.itemInfoSearch ? '<button class="search-clear" data-action="clear-catalog-search" title="Clear search">✕</button>' : '')+
+        '</div>'+
+      '</div>'+
+      '<div class="filter-tabs">'+
+        STORES.map(function(s){
+          return '<button class="'+(filter===s.id?'active':'')+'" data-action="filter-catalog" data-filter="'+s.id+'">'+s.name+'</button>';
+        }).join("")+
+      '</div>'+
+      '<div class="list-body" style="padding-bottom:40px;">'+groupsHtml+'</div>'+
+      '<div class="footer-links"><button class="link-btn" data-action="reset-catalog">Reset catalog to defaults</button></div>'
+    );
+  }
+
+  function renderCatalogCard(item){
+    var storeName = STORES.filter(function(s){return s.id===item.store;})[0].name;
+    var bw = boxWeight(item);
+    return (
+      '<div class="catalog-card" data-item="'+item.id+'">'+
+        '<div class="head"><div><div class="item-name">'+item.name+'<span class="type-chip">'+item.unit+'</span>'+
+          (item.placeholder ? '<span class="est-badge" title="No par was given in the source sheet">est.</span>' : '')+'</div>'+
+          (item.nameEs ? '<div class="name-es">'+item.nameEs+'</div>' : '')+
+          '<div class="store-tag">'+storeName+' · '+item.supplier+(item.category?' · '+item.category:'')+'</div></div>'+
+          '<span class="saved-flash" data-role="saved-flash">saved</span></div>'+
+        '<div class="catalog-fields">'+
+          '<div class="field"><label>Unit</label><input type="text" placeholder="—" value="'+item.unit+'" data-action="edit-unit" data-item="'+item.id+'"></div>'+
+          '<div class="field"><label>Units / box</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.unitsPerBox==null?"":item.unitsPerBox)+'" data-action="edit-units-per-box" data-item="'+item.id+'"></div>'+
+          '<div class="field"><label>Weight / unit (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.weightPerUnit==null?"":item.weightPerUnit)+'" data-action="edit-weight-per-unit" data-item="'+item.id+'"></div>'+
+          '<div class="field"><label>Supplier</label><select data-action="edit-supplier" data-item="'+item.id+'">'+
+            suppliersForStore(item.store).map(function(s){
+              return '<option value="'+s+'"'+(s===item.supplier?' selected':'')+'>'+s+'</option>';
+            }).join("")+
+          '</select></div>'+
+        '</div>'+
+        '<div class="par-row">'+
+          '<div class="field"><label>Par (Wed)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" value="'+item.parWed+'" data-action="edit-par-wed" data-item="'+item.id+'"></div>'+
+          '<div class="field"><label>Par (Sun)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" value="'+item.parSun+'" data-action="edit-par-sun" data-item="'+item.id+'"></div>'+
+        '</div>'+
+        '<div class="box-weight" data-role="box-weight">'+(bw==null ? "Box weight: —" : "Box weight: "+fmt(bw)+" g")+'</div>'+
+      '</div>'
+    );
+  }
+
+  /* ============================= SUCCESS SCREEN ============================= */
+
+  function renderSuccess(){
+    var sub = state.lastSubmission;
+    if(!sub) return "";
+    return (
+      '<div class="success-screen">'+
+        '<div class="check">✓</div>'+
+        '<h2>List saved</h2>'+
+        '<p><b>'+sub.storeName+'</b> · '+cycleLabel(sub.cycle)+' cycle<br>'+sub.date+' · submitted by '+sub.staffName+'<br>'+sub.itemCount+' items on the list</p>'+
+        '<button class="submit-btn" style="max-width:260px" data-action="print-from-submission">🖨 View / print this order</button>'+
+        '<button class="link-btn" data-action="start-new">Start another list</button>'+
+      '</div>'
+    );
+  }
+
+  // Convert a raw order quantity into what a manager actually asks the
+  // supplier for: whole boxes when a box size is known ("1 box", never a
+  // fraction — you can't order half a box), otherwise the raw quantity in
+  // whatever unit the item is tracked in.
+  function printQty(item, order){
+    if(item.unitsPerBox){
+      var boxes = Math.ceil(order / item.unitsPerBox - 1e-9);
+      return boxes + (boxes === 1 ? " box" : " boxes");
+    }
+    return fmt(order) + " " + item.unit;
+  }
+
+  function groupPrintLines(lines){
+    var supplierOrder = [];
+    var suppliers = {};
+    lines.forEach(function(l){
+      var s = l.item.supplier;
+      if(!suppliers[s]){ suppliers[s] = []; supplierOrder.push(s); }
+      suppliers[s].push(l);
+    });
+    supplierOrder.sort(function(a, b){
+      var ia = SUPPLIER_ORDER.indexOf(a), ib = SUPPLIER_ORDER.indexOf(b);
+      if(ia === -1) ia = SUPPLIER_ORDER.length;
+      if(ib === -1) ib = SUPPLIER_ORDER.length;
+      return ia - ib;
+    });
+    return supplierOrder.map(function(s){ return { supplier: s, lines: suppliers[s] }; });
+  }
+
+  // The printable order — what actually gets sent to/read by the manager.
+  // Only items with something to order show up: no skipped items, nothing
+  // at zero. window.print() (native browser/OS print, works on iPad/phone
+  // as "Save as PDF" too) does the rest — no library, no server round trip.
+  // Plain-text version of the order, for clipboard/share — window.print()
+  // doesn't work inside the Artifact viewer's sandbox, so copy-and-paste
+  // (into WhatsApp, email, Notes, whatever) is the reliable path here.
+  function buildPrintText(d){
+    var lines = [d.storeName+" — Order", cycleLabel(d.cycle)+" cycle · "+d.date+" · prepared by "+d.staffName, ""];
+    var groups = groupPrintLines(d.items);
+    if(groups.length === 0){
+      lines.push("Nothing to order this cycle.");
+    } else {
+      groups.forEach(function(g){
+        lines.push(g.supplier.toUpperCase());
+        g.lines.forEach(function(l){
+          var esPart = l.item.nameEs ? " ("+l.item.nameEs+")" : "";
+          lines.push("- "+l.item.name+esPart+": "+printQty(l.item, l.order));
+        });
+        lines.push("");
+      });
+    }
+    return lines.join("\n").trim();
+  }
+
+  function renderPrintView(){
+    var d = state.printData;
+    if(!d){
+      return '<div class="centered-screen"><p>Nothing to show yet.</p><button class="link-btn" data-action="print-back">‹ Back</button></div>';
+    }
+    var groups = groupPrintLines(d.items);
+    var groupsHtml = groups.map(function(g){
+      var rows = g.lines.map(function(l){
+        return (
+          '<div class="print-row">'+
+            '<span>'+l.item.name+(l.item.nameEs ? ' <i>('+l.item.nameEs+')</i>' : '')+'</span>'+
+            '<b>'+printQty(l.item, l.order)+'</b>'+
+          '</div>'
+        );
+      }).join("");
+      return '<div class="print-supplier"><h3>'+g.supplier+'</h3>'+rows+'</div>';
+    }).join("");
+    if(groups.length === 0) groupsHtml = '<p class="print-empty">Nothing to order this cycle.</p>';
+
+    var canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+    return (
+      '<div class="print-page">'+
+        '<div class="no-print top-actions">'+
+          '<button class="icon-btn" data-action="print-back">‹</button>'+
+          '<div class="top-actions-right">'+
+            (canShare ? '<button class="preview-btn" data-action="share-order">Share…</button>' : '')+
+            '<button class="submit-btn" data-action="copy-order">📋 Copy order</button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="no-print copy-flash" data-role="copy-flash" hidden>Copied — paste it into WhatsApp, email, or Notes.</div>'+
+        '<div class="print-header">'+
+          '<div class="wordmark">Bonita</div>'+
+          '<h1>'+d.storeName+' — Order</h1>'+
+          '<p>'+cycleLabel(d.cycle)+' cycle · '+d.date+' · prepared by '+d.staffName+'</p>'+
+        '</div>'+
+        groupsHtml+
+        '<p class="no-print print-hint">Can\'t copy? Just tap-and-hold on the list above to select and copy it manually.</p>'+
+      '</div>'
+    );
+  }
+
+  /* ============================= EVENTS ============================= */
+
+  app.addEventListener("click", function(e){
+    var el = e.target.closest("[data-action]");
+    if(!el) return;
+    var action = el.getAttribute("data-action");
+
+    if(action === "pick-store"){
+      state.store = el.getAttribute("data-store");
+      go("name");
+    }
+    else if(action === "back-to-store"){
+      state.store = null;
+      go("store");
+    }
+    else if(action === "pick-name"){
+      state.staffName = el.getAttribute("data-name");
+      go("order");
+    }
+    else if(action === "switch-user"){
+      state.store = null; state.staffName = null; state.searchQuery = "";
+      go("store");
+    }
+    else if(action === "set-cycle"){
+      state.cycle = el.getAttribute("data-cycle");
+      persistAppState();
+      render();
+    }
+    else if(action === "toggle-supplier"){
+      var supplierName = el.getAttribute("data-supplier");
+      var supplierItems = itemsForStore(state.store).filter(function(i){ return i.supplier === supplierName; });
+      var supplierSession = loadSession(state.store, state.cycle);
+      var supplierRemaining = supplierItems.filter(function(i){ return !isTouched(entryFor(supplierSession,i)); }).length;
+      var currentlyCollapsed = supplierCollapsed(supplierSession, supplierName, supplierRemaining);
+      supplierSession.collapsed[supplierName] = !currentlyCollapsed;
+      saveSession(state.store, state.cycle, supplierSession);
+      render();
+    }
+    else if(action === "toggle-info"){
+      var infoId = el.getAttribute("data-item");
+      state.expandedInfo[infoId] = !state.expandedInfo[infoId];
+      render();
+    }
+    else if(action === "edit-in-catalog"){
+      var catalogItem = catalog.filter(function(i){return i.id===el.getAttribute("data-item");})[0];
+      state.itemInfoSearch = catalogItem.name;
+      state.itemInfoFilter = catalogItem.store;
+      go("item-info");
+    }
+    else if(action === "toggle-onhand-picker"){
+      var toggleId = el.getAttribute("data-item");
+      state.openOnHandPicker = (state.openOnHandPicker === toggleId) ? null : toggleId;
+      render();
+    }
+    else if(action === "pick-onhand"){
+      var pickId = el.getAttribute("data-item");
+      var pickItem = catalog.filter(function(i){return i.id===pickId;})[0];
+      var pickSession = loadSession(state.store, state.cycle);
+      var pickEntry = entryFor(pickSession, pickItem);
+      pickEntry.onHand = el.getAttribute("data-value");
+      if(pickEntry.skipped) pickEntry.skipped = false;
+      recomputeOrder(pickEntry, pickItem);
+      saveSession(state.store, state.cycle, pickSession);
+      state.openOnHandPicker = null;
+      render();
+    }
+    else if(action === "pick-onhand-other"){
+      var otherId = el.getAttribute("data-item");
+      state.customOnHand[otherId] = true;
+      state.openOnHandPicker = null;
+      render();
+      var freshOtherInput = app.querySelector('.item-row-wrap[data-item="'+otherId+'"] [data-action="input-onhand"]');
+      if(freshOtherInput) freshOtherInput.focus();
+    }
+    else if(action === "toggle-skip"){
+      var id = el.getAttribute("data-item");
+      var session = loadSession(state.store, state.cycle);
+      var item = catalog.filter(function(i){return i.id===id;})[0];
+      var entry = entryFor(session, item);
+      entry.skipped = !entry.skipped;
+      saveSession(state.store, state.cycle, session);
+      render();
+    }
+    else if(action === "reset-auto"){
+      var id2 = el.getAttribute("data-item");
+      var session2 = loadSession(state.store, state.cycle);
+      var item2 = catalog.filter(function(i){return i.id===id2;})[0];
+      var entry2 = entryFor(session2, item2);
+      entry2.manualOrder = false;
+      recomputeOrder(entry2, item2);
+      saveSession(state.store, state.cycle, session2);
+      render();
+    }
+    else if(action === "open-item-info"){
+      state.itemInfoFilter = state.store;
+      go("item-info");
+    }
+    else if(action === "close-item-info"){ go("order"); }
+    else if(action === "filter-catalog"){
+      state.itemInfoFilter = el.getAttribute("data-filter");
+      render();
+    }
+    else if(action === "clear-search"){
+      state.searchQuery = "";
+      render();
+    }
+    else if(action === "clear-catalog-search"){
+      state.itemInfoSearch = "";
+      render();
+    }
+    else if(action === "reset-catalog"){
+      catalog = defaultCatalog();
+      saveCatalog(catalog);
+      render();
+    }
+    else if(action === "preview-print"){
+      var previewItems = itemsForStore(state.store);
+      var previewSession = loadSession(state.store, state.cycle);
+      var previewStoreName = STORES.filter(function(s){return s.id===state.store;})[0].name;
+      var lines = [];
+      previewItems.forEach(function(item){
+        var e = entryFor(previewSession, item);
+        // An untouched item still shows an auto-filled "par minus zero"
+        // suggestion in its Order field — that was never actually reviewed,
+        // so it must not appear as a real order. Only touched, unskipped,
+        // non-zero items count.
+        if(!isTouched(e) || e.skipped) return;
+        var order = parseFloat(e.order) || 0;
+        if(order <= 0) return;
+        lines.push({ item: item, order: order });
+      });
+      state.printData = {
+        storeName: previewStoreName, cycle: state.cycle, staffName: state.staffName,
+        date: new Date().toISOString().slice(0,10), items: lines
+      };
+      state.printReturnTo = "order";
+      go("print");
+    }
+    else if(action === "print-from-submission"){
+      var sub = state.lastSubmission;
+      var subLines = sub.items.filter(function(i){
+          var touched = i.skipped || i.onHand !== "";
+          return touched && !i.skipped && (parseFloat(i.order)||0) > 0;
+        })
+        .map(function(i){
+          return { item: i, order: parseFloat(i.order) || 0 };
+        });
+      state.printData = {
+        storeName: sub.storeName, cycle: sub.cycle, staffName: sub.staffName,
+        date: sub.date, items: subLines
+      };
+      state.printReturnTo = "success";
+      go("print");
+    }
+    else if(action === "print-back"){
+      go(state.printReturnTo || "order");
+    }
+    else if(action === "open-settings"){
+      state.settingsReturnTo = state.screen;
+      go("settings");
+    }
+    else if(action === "close-settings"){ go(state.settingsReturnTo || "store"); }
+    else if(action === "enter-reorder"){
+      // The reorder list always shows every item for this supplier, so a
+      // stale search filter can't silently drop items out of the list
+      // reorderSupplierItems() expects to see.
+      state.itemInfoSearch = "";
+      state.reorderSupplier = el.getAttribute("data-supplier");
+      render();
+    }
+    else if(action === "exit-reorder"){
+      state.reorderSupplier = null;
+      render();
+    }
+    else if(action === "request-reset"){
+      state.confirmResetOpen = true;
+      render();
+    }
+    else if(action === "dismiss-reset"){
+      state.confirmResetOpen = false;
+      render();
+    }
+    else if(action === "confirm-reset"){
+      resetEverything();
+    }
+    else if(action === "copy-order"){
+      var textToCopy = buildPrintText(state.printData);
+      var flash = app.querySelector('[data-role="copy-flash"]');
+      function showFlash(msg){
+        if(!flash) return;
+        flash.textContent = msg;
+        flash.hidden = false;
+        clearTimeout(flash._t);
+        flash._t = setTimeout(function(){ flash.hidden = true; }, 3000);
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(textToCopy).then(function(){
+          showFlash("Copied — paste it into WhatsApp, email, or Notes.");
+        }).catch(function(){
+          showFlash("Couldn't copy automatically — tap-and-hold the list above to select and copy it manually.");
+        });
+      } else {
+        showFlash("Copy isn't available here — tap-and-hold the list above to select and copy it manually.");
+      }
+    }
+    else if(action === "share-order"){
+      var shareText = buildPrintText(state.printData);
+      navigator.share({ title: state.printData.storeName + " — Order", text: shareText }).catch(function(){});
+    }
+    else if(action === "request-submit"){
+      state.confirmSubmitOpen = true;
+      render();
+    }
+    else if(action === "cancel-submit" || action === "dismiss-overlay"){
+      state.confirmSubmitOpen = false;
+      render();
+    }
+    else if(action === "confirm-submit"){
+      submitList();
+    }
+    else if(action === "start-new"){
+      state.store = null; state.staffName = null; state.lastSubmission = null; state.searchQuery = "";
+      go("store");
+    }
+  });
+
+  app.addEventListener("input", function(e){
+    var el = e.target;
+    var action = el.getAttribute("data-action");
+    if(!action) return;
+
+    if(action === "search-query" || action === "search-catalog"){
+      if(action === "search-query") state.searchQuery = el.value;
+      else state.itemInfoSearch = el.value;
+      var cursorPos = null;
+      try{ cursorPos = el.selectionStart; }catch(err){}
+      render();
+      var fresh = app.querySelector('[data-action="'+action+'"]');
+      if(fresh){
+        fresh.focus();
+        var pos = cursorPos == null ? fresh.value.length : Math.min(cursorPos, fresh.value.length);
+        try{ fresh.setSelectionRange(pos, pos); }catch(err){}
+      }
+      return;
+    }
+
+    var id = el.getAttribute("data-item");
+    var session = loadSession(state.store, state.cycle);
+    var item = catalog.filter(function(i){return i.id===id;})[0];
+
+    if(action === "input-onhand"){
+      var entry = entryFor(session, item);
+      entry.onHand = el.value;
+      if(entry.skipped && el.value !== "") entry.skipped = false;
+      recomputeOrder(entry, item);
+      saveSession(state.store, state.cycle, session);
+      // update just this card's dependent bits without a full re-render jump on this field
+      refreshCard(item, entry);
+    }
+    else if(action === "input-order"){
+      var entry2 = entryFor(session, item);
+      entry2.order = el.value;
+      entry2.manualOrder = true;
+      if(entry2.skipped && el.value !== "") entry2.skipped = false;
+      saveSession(state.store, state.cycle, session);
+      refreshCard(item, entry2);
+    }
+    else if(action === "edit-unit"){
+      // Real source data has gaps (dashes on the paper sheet) — unit is
+      // otherwise fixed at catalog-setup time, but needs to be fixable here
+      // too so those gaps don't stay stuck forever.
+      item.unit = el.value;
+      saveCatalog(catalog);
+      flashSaved(el);
+    }
+    else if(action === "edit-supplier"){
+      // Changing supplier moves the item into a different group, so this
+      // needs a full re-render (unlike the text fields, there's no
+      // in-progress typing here to preserve focus for).
+      item.supplier = el.value;
+      saveCatalog(catalog);
+      render();
+    }
+    else if(action === "edit-units-per-box" || action === "edit-weight-per-unit"){
+      // Blank means "not applicable" (null), not zero — zero would wrongly
+      // switch on rounding / weight-calc logic that reads these as set.
+      var raw = el.value.trim();
+      var parsed = raw === "" ? null : (parseFloat(raw) || 0);
+      item[action === "edit-units-per-box" ? "unitsPerBox" : "weightPerUnit"] = parsed;
+      saveCatalog(catalog);
+      flashSaved(el);
+      updateBoxWeight(item);
+    }
+    else if(action === "edit-par-wed" || action === "edit-par-sun"){
+      item[action === "edit-par-wed" ? "parWed" : "parSun"] = parseFloat(el.value) || 0;
+      // A real edit means this is no longer an invented placeholder par.
+      if(item.placeholder){
+        item.placeholder = false;
+        var badge = el.closest(".catalog-card") && el.closest(".catalog-card").querySelector(".est-badge");
+        if(badge) badge.remove();
+      }
+      saveCatalog(catalog);
+      flashSaved(el);
+    }
+  });
+
+  function updateBoxWeight(item){
+    var card = app.querySelector('.catalog-card[data-item="'+item.id+'"]');
+    if(!card) return;
+    var el = card.querySelector('[data-role="box-weight"]');
+    if(!el) return;
+    var bw = boxWeight(item);
+    el.textContent = bw == null ? "Box weight: —" : "Box weight: " + fmt(bw) + " g";
+  }
+
+  function flashSaved(inputEl){
+    var card = inputEl.closest(".catalog-card");
+    if(!card) return;
+    var flash = card.querySelector('[data-role="saved-flash"]');
+    if(!flash) return;
+    flash.classList.add("show");
+    clearTimeout(flash._t);
+    flash._t = setTimeout(function(){ flash.classList.remove("show"); }, 900);
+  }
+
+  // Re-render just the touched card's HTML (progress header still needs a
+  // full render, but we avoid stealing input focus on every keystroke by
+  // only swapping the one card + header stats). Whichever field the person
+  // is actively typing in — "you have" or "order" — keeps focus and cursor
+  // position across the swap.
+  function refreshCard(item, entry){
+    var items = itemsForStore(state.store);
+    var session = loadSession(state.store, state.cycle);
+
+    // If this edit just finished the last item in its supplier group and
+    // that group is about to auto-collapse, the row (and its siblings) are
+    // leaving the DOM entirely — a targeted patch can't express that, so
+    // fall back to a full render for this one edit.
+    var supplierItems = items.filter(function(i){ return i.supplier === item.supplier; });
+    var supplierRemaining = supplierItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+    var willCollapse = !state.searchQuery && supplierCollapsed(session, item.supplier, supplierRemaining);
+    var alreadyCollapsed = !app.querySelector('.item-row-wrap[data-item="'+item.id+'"]');
+    if(willCollapse && !alreadyCollapsed){
+      render();
+      return;
+    }
+
+    var progressWrap = app.querySelector(".progress-line");
+    var touchedCount = items.filter(function(i){ return isTouched(entryFor(session,i)); }).length;
+    var pct = items.length ? Math.round((touchedCount/items.length)*100) : 0;
+    if(progressWrap){
+      progressWrap.querySelector(".num").textContent = touchedCount + " of " + items.length + " reviewed";
+      progressWrap.querySelector(".progress-bar > i").style.width = pct + "%";
+    }
+
+    var card = app.querySelector('.item-row-wrap[data-item="'+item.id+'"]');
+    if(!card) return;
+    var active = document.activeElement;
+    var focusedAction = null, cursorPos = null;
+    if(active && card.contains(active) && active.tagName === "INPUT"){
+      focusedAction = active.getAttribute("data-action");
+      try{ cursorPos = active.selectionStart; }catch(err){ cursorPos = null; }
+    }
+    var newHtml = renderItemCard(item, entry);
+    var temp = document.createElement("div");
+    temp.innerHTML = newHtml;
+    var newCard = temp.firstChild;
+    card.parentNode.replaceChild(newCard, card);
+    if(focusedAction){
+      var input = newCard.querySelector('[data-action="'+focusedAction+'"]');
+      if(input){
+        input.focus();
+        var pos = cursorPos == null ? input.value.length : Math.min(cursorPos, input.value.length);
+        try{ input.setSelectionRange(pos, pos); }catch(err){}
+      }
+    }
+    // supplier "left" counter
+    var group = newCard.closest(".supplier-group");
+    if(group){
+      var supplierName = item.supplier;
+      var groupItems = items.filter(function(i){ return i.supplier === supplierName; });
+      var remaining = groupItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      var countEl = group.querySelector(".count");
+      if(countEl) countEl.textContent = remaining === 0 ? "all reviewed" : remaining + " left";
+    }
+  }
+
+  function submitList(){
+    var items = itemsForStore(state.store);
+    var session = loadSession(state.store, state.cycle);
+    var storeName = STORES.filter(function(s){return s.id===state.store;})[0].name;
+    var record = {
+      date: new Date().toISOString().slice(0,10),
+      store: state.store,
+      storeName: storeName,
+      cycle: state.cycle,
+      staffName: state.staffName,
+      itemCount: items.length,
+      items: items.map(function(item){
+        var e = entryFor(session, item);
+        return {
+          id:item.id, name:item.name, nameEs:item.nameEs, supplier:item.supplier,
+          unit:item.unit, unitsPerBox:item.unitsPerBox,
+          onHand:e.onHand, order:e.order, skipped:e.skipped
+        };
+      })
+    };
+    var submissions = readJSON(SUBMISSIONS_KEY, []);
+    submissions.push(record);
+    writeJSON(SUBMISSIONS_KEY, submissions);
+
+    clearSession(state.store, state.cycle);
+    state.confirmSubmitOpen = false;
+    state.lastSubmission = record;
+    go("success");
+  }
+
+  /* ============================= INIT ============================= */
+
+  // The actual startup sequence, run once - either immediately (no Firebase
+  // configured, or it's unreachable) or after a prior cloud save has been
+  // restored into localStorage, so loadCatalog()/restoreAppState() always
+  // see the right data regardless of which device this is.
+  function boot(){
+    catalog = loadCatalog();
+    restoreAppState();
+    render();
+  }
+
+  initCloudSync(boot);
+})();
+</script>
