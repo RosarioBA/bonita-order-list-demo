@@ -632,6 +632,9 @@
     display:flex; align-items:center; justify-content:center; font-size:1.8rem;
   }
   .success-screen p{color:var(--text-muted); font-size:.9rem; max-width:36ch;}
+  .history-status{font-size:.8rem; margin:-6px 0 0;}
+  .history-status.ok{color:var(--success);}
+  .history-status.error{color:var(--danger);}
 
   .footer-links{display:flex; justify-content:center; padding:10px 0 22px;}
 
@@ -1237,6 +1240,7 @@
     historyItems: undefined, // undefined = not fetched yet, null = loading, array = loaded (shared across everyone)
     historyError: false,
     historyReturnTo: null,
+    historyWriteStatus: null, // null | "pending" | "ok" | "error" | "unavailable" -- shown on the success screen
     searchQuery: "",
     itemInfoSearch: "",
     expandedInfo: {}, // itemId -> true, which rows have their info panel open (transient, not persisted)
@@ -1908,11 +1912,17 @@
   function renderSuccess(){
     var sub = state.lastSubmission;
     if(!sub) return "";
+    var historyNote = "";
+    if(state.historyWriteStatus === "pending") historyNote = '<p class="history-status">Adding to shared history…</p>';
+    else if(state.historyWriteStatus === "ok") historyNote = '<p class="history-status ok">✓ Added to shared history</p>';
+    else if(state.historyWriteStatus === "error") historyNote = '<p class="history-status error">⚠ Couldn\'t add to shared history (check Firestore rules) — still saved on this device</p>';
+    else if(state.historyWriteStatus === "unavailable") historyNote = '<p class="history-status error">⚠ Not connected to the cloud right now — not added to shared history</p>';
     return (
       '<div class="success-screen">'+
         '<div class="check">✓</div>'+
         '<h2>List saved</h2>'+
         '<p><b>'+sub.storeName+'</b> · '+cycleLabel(sub.cycle)+' cycle<br>'+sub.date+' · submitted by '+sub.staffName+'<br>'+sub.itemCount+' items on the list</p>'+
+        historyNote+
         '<button class="submit-btn" style="max-width:260px" data-action="copy-order-success">📋 Copy order</button>'+
         '<div class="copy-flash" data-role="copy-flash" hidden></div>'+
         '<button class="preview-btn" style="max-width:260px" data-action="print-from-submission">🖨 View / print this order</button>'+
@@ -2558,6 +2568,7 @@
     var submissions = readJSON(SUBMISSIONS_KEY, []);
     submissions.push(record);
     writeJSON(SUBMISSIONS_KEY, submissions);
+    state.historyWriteStatus = "pending";
     pushSharedSubmission(record);
 
     clearSession(state.store, state.cycle);
@@ -2568,16 +2579,26 @@
 
   // Mirrors a submission into a shared Firestore collection everyone can
   // read, separate from the per-device backup doc in writeJSON/pushToCloud.
-  // Best-effort: if Firebase isn't configured or the write fails, the
-  // submission still exists locally (and in the private backup) same as
-  // before this feature existed.
+  // Updates state.historyWriteStatus so the success screen can show whether
+  // it actually worked, instead of failing silently with no visible trace.
   function pushSharedSubmission(record){
-    if(!isFirebaseConfigured() || !cloudReady) return;
+    if(!isFirebaseConfigured() || !cloudReady){
+      state.historyWriteStatus = "unavailable";
+      return;
+    }
     try{
       firebase.firestore().collection("shared_submissions").add(Object.assign({}, record, {
         submittedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }));
-    }catch(e){}
+      })).then(function(){
+        state.historyWriteStatus = "ok";
+        render();
+      }).catch(function(){
+        state.historyWriteStatus = "error";
+        render();
+      });
+    }catch(e){
+      state.historyWriteStatus = "error";
+    }
   }
 
   /* ============================= INIT ============================= */
