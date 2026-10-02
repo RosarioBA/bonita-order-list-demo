@@ -1241,6 +1241,7 @@
     historyError: false,
     historyReturnTo: null,
     historyWriteStatus: null, // null | "pending" | "ok" | "error" | "unavailable" -- shown on the success screen
+    historyWriteError: null, // actual Firestore error code/message, shown alongside historyWriteStatus "error"
     searchQuery: "",
     itemInfoSearch: "",
     expandedInfo: {}, // itemId -> true, which rows have their info panel open (transient, not persisted)
@@ -1915,7 +1916,7 @@
     var historyNote = "";
     if(state.historyWriteStatus === "pending") historyNote = '<p class="history-status">Adding to shared history…</p>';
     else if(state.historyWriteStatus === "ok") historyNote = '<p class="history-status ok">✓ Added to shared history</p>';
-    else if(state.historyWriteStatus === "error") historyNote = '<p class="history-status error">⚠ Couldn\'t add to shared history (check Firestore rules) — still saved on this device</p>';
+    else if(state.historyWriteStatus === "error") historyNote = '<p class="history-status error">⚠ Couldn\'t add to shared history: '+escHtml(state.historyWriteError||"unknown error")+' — still saved on this device</p>';
     else if(state.historyWriteStatus === "unavailable") historyNote = '<p class="history-status error">⚠ Not connected to the cloud right now — not added to shared history</p>';
     return (
       '<div class="success-screen">'+
@@ -2592,12 +2593,15 @@
       })).then(function(){
         state.historyWriteStatus = "ok";
         render();
-      }).catch(function(){
+      }).catch(function(err){
         state.historyWriteStatus = "error";
+        state.historyWriteError = (err && (err.code || err.message)) || "unknown error";
         render();
       });
     }catch(e){
       state.historyWriteStatus = "error";
+      state.historyWriteError = (e && e.message) || "unknown error";
+      render();
     }
   }
 
