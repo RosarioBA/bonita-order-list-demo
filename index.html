@@ -509,7 +509,7 @@
   /* ---------- printable order ---------- */
   .print-page{max-width:640px; margin:0 auto; padding:16px 18px 40px;}
   .top-actions{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;}
-  .top-actions-right{display:flex; gap:8px;}
+  .top-actions-right{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
   .top-actions .preview-btn, .top-actions .submit-btn{width:auto; padding:10px 14px; font-size:.85rem;}
   .copy-flash{
     background:var(--success-tint); color:var(--success); border:1px solid var(--success);
@@ -1622,8 +1622,6 @@
       groupsHtml = '<div class="empty-search">No items match "'+escHtml(state.searchQuery)+'".</div>';
     }
 
-    var confirmModal = state.confirmSubmitOpen ? renderConfirmSheet(items.length - touchedCount) : "";
-
     return (
       '<div class="app-header">'+
         '<div class="row1">'+
@@ -1648,10 +1646,8 @@
       '</div>'+
       '<div class="list-body">'+groupsHtml+'</div>'+
       '<div class="bottom-bar">'+
-        '<button class="preview-btn" data-action="preview-print">🖨 Preview order</button>'+
-        '<button class="submit-btn" data-action="request-submit">Submit list</button>'+
-      '</div>'+
-      confirmModal
+        '<button class="submit-btn" data-action="preview-print">🖨 Preview list</button>'+
+      '</div>'
     );
   }
 
@@ -1894,7 +1890,9 @@
         '<div class="check">✓</div>'+
         '<h2>List saved</h2>'+
         '<p><b>'+sub.storeName+'</b> · '+cycleLabel(sub.cycle)+' cycle<br>'+sub.date+' · submitted by '+sub.staffName+'<br>'+sub.itemCount+' items on the list</p>'+
-        '<button class="submit-btn" style="max-width:260px" data-action="print-from-submission">🖨 View / print this order</button>'+
+        '<button class="submit-btn" style="max-width:260px" data-action="copy-order-success">📋 Copy order</button>'+
+        '<div class="copy-flash" data-role="copy-flash" hidden></div>'+
+        '<button class="preview-btn" style="max-width:260px" data-action="print-from-submission">🖨 View / print this order</button>'+
         '<button class="link-btn" data-action="start-new">Start another list</button>'+
       '</div>'
     );
@@ -1954,6 +1952,40 @@
     return lines.join("\n").trim();
   }
 
+  // Rebuilds the printData shape from a saved submission record, so both
+  // "View / print this order" and "Copy order" on the success screen can
+  // show the exact list that was submitted, not the (now-cleared) session.
+  function printDataFromSubmission(sub){
+    var subLines = sub.items.filter(function(i){
+        var touched = i.skipped || i.onHand !== "";
+        return touched && !i.skipped && (parseFloat(i.order)||0) > 0;
+      })
+      .map(function(i){ return { item: i, order: parseFloat(i.order) || 0 }; });
+    return { storeName: sub.storeName, cycle: sub.cycle, staffName: sub.staffName, date: sub.date, items: subLines };
+  }
+
+  // Shared clipboard-copy + flash-message behavior, used by the print
+  // screen's "Copy order" and the success screen's "Copy order" alike.
+  function copyOrderText(text){
+    var flash = app.querySelector('[data-role="copy-flash"]');
+    function showFlash(msg){
+      if(!flash) return;
+      flash.textContent = msg;
+      flash.hidden = false;
+      clearTimeout(flash._t);
+      flash._t = setTimeout(function(){ flash.hidden = true; }, 3000);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){
+        showFlash("Copied — paste it into WhatsApp, email, or Notes.");
+      }).catch(function(){
+        showFlash("Couldn't copy automatically — tap-and-hold the list above to select and copy it manually.");
+      });
+    } else {
+      showFlash("Copy isn't available here — tap-and-hold the list above to select and copy it manually.");
+    }
+  }
+
   function renderPrintView(){
     var d = state.printData;
     if(!d){
@@ -1974,6 +2006,17 @@
     if(groups.length === 0) groupsHtml = '<p class="print-empty">Nothing to order this cycle.</p>';
 
     var canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+    // Submitting is only offered from the pre-submission preview (reached
+    // from the order screen) — once a list is already submitted (reached
+    // from the success screen), there's nothing left to submit, just copy.
+    var canSubmit = state.printReturnTo === "order";
+    var confirmModal = "";
+    if(canSubmit && state.confirmSubmitOpen){
+      var liveItems = itemsForStore(state.store);
+      var liveSession = loadSession(state.store, state.cycle);
+      var untouchedCount = liveItems.filter(function(i){ return !isTouched(entryFor(liveSession,i)); }).length;
+      confirmModal = renderConfirmSheet(untouchedCount);
+    }
 
     return (
       '<div class="print-page">'+
@@ -1981,7 +2024,8 @@
           '<button class="icon-btn" data-action="print-back">‹</button>'+
           '<div class="top-actions-right">'+
             (canShare ? '<button class="preview-btn" data-action="share-order">Share…</button>' : '')+
-            '<button class="submit-btn" data-action="copy-order">📋 Copy order</button>'+
+            '<button class="preview-btn" data-action="copy-order">📋 Copy order</button>'+
+            (canSubmit ? '<button class="submit-btn" data-action="request-submit">Submit list</button>' : '')+
           '</div>'+
         '</div>'+
         '<div class="no-print copy-flash" data-role="copy-flash" hidden>Copied — paste it into WhatsApp, email, or Notes.</div>'+
@@ -1992,7 +2036,8 @@
         '</div>'+
         groupsHtml+
         '<p class="no-print print-hint">Can\'t copy? Just tap-and-hold on the list above to select and copy it manually.</p>'+
-      '</div>'
+      '</div>'+
+      confirmModal
     );
   }
 
@@ -2135,18 +2180,7 @@
       go("print");
     }
     else if(action === "print-from-submission"){
-      var sub = state.lastSubmission;
-      var subLines = sub.items.filter(function(i){
-          var touched = i.skipped || i.onHand !== "";
-          return touched && !i.skipped && (parseFloat(i.order)||0) > 0;
-        })
-        .map(function(i){
-          return { item: i, order: parseFloat(i.order) || 0 };
-        });
-      state.printData = {
-        storeName: sub.storeName, cycle: sub.cycle, staffName: sub.staffName,
-        date: sub.date, items: subLines
-      };
+      state.printData = printDataFromSubmission(state.lastSubmission);
       state.printReturnTo = "success";
       go("print");
     }
@@ -2182,24 +2216,10 @@
       resetEverything();
     }
     else if(action === "copy-order"){
-      var textToCopy = buildPrintText(state.printData);
-      var flash = app.querySelector('[data-role="copy-flash"]');
-      function showFlash(msg){
-        if(!flash) return;
-        flash.textContent = msg;
-        flash.hidden = false;
-        clearTimeout(flash._t);
-        flash._t = setTimeout(function(){ flash.hidden = true; }, 3000);
-      }
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(textToCopy).then(function(){
-          showFlash("Copied — paste it into WhatsApp, email, or Notes.");
-        }).catch(function(){
-          showFlash("Couldn't copy automatically — tap-and-hold the list above to select and copy it manually.");
-        });
-      } else {
-        showFlash("Copy isn't available here — tap-and-hold the list above to select and copy it manually.");
-      }
+      copyOrderText(buildPrintText(state.printData));
+    }
+    else if(action === "copy-order-success"){
+      copyOrderText(buildPrintText(printDataFromSubmission(state.lastSubmission)));
     }
     else if(action === "share-order"){
       var shareText = buildPrintText(state.printData);
