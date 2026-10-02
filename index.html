@@ -506,6 +506,18 @@
   .sortable-chosen{border-color:var(--accent); background:var(--surface-2);}
   .sortable-drag{box-shadow:var(--shadow);}
 
+  /* ---------- order history (shared across everyone) ---------- */
+  .history-row{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:13px 14px; box-shadow:var(--shadow); display:flex; align-items:center;
+    justify-content:space-between; gap:10px; cursor:pointer; text-align:left; width:100%; font:inherit;
+  }
+  .history-row:active{background:var(--surface-2);}
+  .history-row-main{display:flex; flex-direction:column; gap:3px;}
+  .history-row-main b{font-family:"Fraunces",serif; font-size:1.02rem;}
+  .history-meta{font-size:.78rem; color:var(--text-muted);}
+  .history-chevron{color:var(--text-faint); font-size:1.1rem;}
+
   /* ---------- printable order ---------- */
   .print-page{max-width:640px; margin:0 auto; padding:16px 18px 40px;}
   .top-actions{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;}
@@ -1220,6 +1232,9 @@
     confirmSubmitOpen: false,
     confirmResetOpen: false,
     reorderSupplier: null, // supplier name currently in drag-to-reorder mode on Item Info, or null
+    historyItems: undefined, // undefined = not fetched yet, null = loading, array = loaded (shared across everyone)
+    historyError: false,
+    historyReturnTo: null,
     searchQuery: "",
     itemInfoSearch: "",
     expandedInfo: {}, // itemId -> true, which rows have their info panel open (transient, not persisted)
@@ -1360,6 +1375,10 @@
     else if(state.screen === "item-info") html = renderItemInfo();
     else if(state.screen === "success") html = renderSuccess();
     else if(state.screen === "print") html = renderPrintView();
+    else if(state.screen === "history"){
+      if(state.historyItems === undefined) loadHistory();
+      html = renderHistory();
+    }
     else if(state.screen === "settings") html = renderSettingsPreview();
     app.innerHTML = html;
     updateStickyOffsets();
@@ -1628,6 +1647,7 @@
           '<div class="identity"><span class="store">'+storeName+'</span><span class="staff">'+state.staffName+'</span></div>'+
           '<div class="header-actions">'+
             '<button class="icon-btn" data-action="open-item-info" title="Item catalog">📖</button>'+
+            '<button class="icon-btn" data-action="open-history" title="Order history">🕑</button>'+
             '<button class="icon-btn" data-action="open-settings" title="Settings (preview)">⚙</button>'+
             '<button class="icon-btn" data-action="switch-user" title="Switch store / name">⇄</button>'+
           '</div>'+
@@ -1895,6 +1915,72 @@
         '<button class="preview-btn" style="max-width:260px" data-action="print-from-submission">🖨 View / print this order</button>'+
         '<button class="link-btn" data-action="start-new">Start another list</button>'+
       '</div>'
+    );
+  }
+
+  /* ============================= ORDER HISTORY (shared) ============================= */
+
+  // Every submission everyone has ever made, read from a shared Firestore
+  // collection (not the per-device backup doc) so this is genuinely shared
+  // across whoever opens the app, not just a log of this one browser's own
+  // submissions. Falls back to an empty/error state if Firebase isn't set
+  // up or the read fails — there's no local-only fallback for this screen,
+  // since "shared" is the whole point of it.
+  function loadHistory(){
+    state.historyItems = null; // loading
+    state.historyError = false;
+    if(!isFirebaseConfigured() || !cloudReady){
+      state.historyItems = [];
+      render();
+      return;
+    }
+    firebase.firestore().collection("shared_submissions").orderBy("submittedAt", "desc").limit(50).get()
+      .then(function(snap){
+        state.historyItems = snap.docs.map(function(doc){
+          var data = doc.data();
+          data.id = doc.id;
+          return data;
+        });
+        render();
+      })
+      .catch(function(){
+        state.historyItems = [];
+        state.historyError = true;
+        render();
+      });
+  }
+
+  function renderHistory(){
+    var body;
+    if(!isFirebaseConfigured()){
+      body = '<div class="empty-search">Shared history needs the cloud connection set up first — see the README.</div>';
+    } else if(state.historyItems === null){
+      body = '<div class="empty-search">Loading…</div>';
+    } else if(state.historyError){
+      body = '<div class="empty-search">Couldn\'t load shared history right now. Check your connection and try again.</div>';
+    } else if(state.historyItems.length === 0){
+      body = '<div class="empty-search">No orders submitted yet.</div>';
+    } else {
+      body = state.historyItems.map(function(sub){
+        return (
+          '<button class="history-row" data-action="view-history-item" data-id="'+sub.id+'">'+
+            '<span class="history-row-main">'+
+              '<b>'+sub.storeName+' · '+cycleLabel(sub.cycle)+'</b>'+
+              '<span class="history-meta">'+sub.date+' · '+sub.staffName+' · '+sub.itemCount+' items</span>'+
+            '</span>'+
+            '<span class="history-chevron">›</span>'+
+          '</button>'
+        );
+      }).join("");
+    }
+    return (
+      '<div class="app-header">'+
+        '<div class="row1">'+
+          '<div class="identity"><span class="store">Order history</span><span class="staff">shared with everyone</span></div>'+
+          '<div class="header-actions"><button class="icon-btn" data-action="close-history">✕</button></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="list-body">'+body+'</div>'
     );
   }
 
@@ -2192,6 +2278,19 @@
       go("settings");
     }
     else if(action === "close-settings"){ go(state.settingsReturnTo || "store"); }
+    else if(action === "open-history"){
+      state.historyReturnTo = state.screen;
+      state.historyItems = undefined; // force a fresh fetch each time, since others may have submitted since the last visit
+      go("history");
+    }
+    else if(action === "close-history"){ go(state.historyReturnTo || "order"); }
+    else if(action === "view-history-item"){
+      var histSub = (state.historyItems || []).filter(function(s){ return s.id === el.getAttribute("data-id"); })[0];
+      if(!histSub) return;
+      state.printData = printDataFromSubmission(histSub);
+      state.printReturnTo = "history";
+      go("print");
+    }
     else if(action === "enter-reorder"){
       // The reorder list always shows every item for this supplier, so a
       // stale search filter can't silently drop items out of the list
@@ -2433,11 +2532,26 @@
     var submissions = readJSON(SUBMISSIONS_KEY, []);
     submissions.push(record);
     writeJSON(SUBMISSIONS_KEY, submissions);
+    pushSharedSubmission(record);
 
     clearSession(state.store, state.cycle);
     state.confirmSubmitOpen = false;
     state.lastSubmission = record;
     go("success");
+  }
+
+  // Mirrors a submission into a shared Firestore collection everyone can
+  // read, separate from the per-device backup doc in writeJSON/pushToCloud.
+  // Best-effort: if Firebase isn't configured or the write fails, the
+  // submission still exists locally (and in the private backup) same as
+  // before this feature existed.
+  function pushSharedSubmission(record){
+    if(!isFirebaseConfigured() || !cloudReady) return;
+    try{
+      firebase.firestore().collection("shared_submissions").add(Object.assign({}, record, {
+        submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }));
+    }catch(e){}
   }
 
   /* ============================= INIT ============================= */
