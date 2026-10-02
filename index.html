@@ -674,10 +674,15 @@
     dlc: ["Yudi", "Yadira", "Jenny", "Rosada", "Santiago", "Zeljko"]
   };
 
-  // Bumped whenever the shipped default catalog data changes, so browsers
-  // that already cached an older seed (e.g. the pre-real-data placeholder)
-  // pick up the new defaults instead of silently keeping the stale ones.
-  var CATALOG_KEY = "bonita_ol_catalog_v10";
+  // The catalog is never saved as one big snapshot anymore -- it's always
+  // rebuilt fresh from defaultCatalog() every load, with the user's own
+  // edits layered on top from these two small, append-friendly stores.
+  // That means a future catalog data fix (new items, corrected names,
+  // resolved suppliers) reaches everyone automatically, while a person's
+  // own field edits and fridge-walk reordering survive it, since neither
+  // is a frozen copy of the old default data.
+  var CATALOG_OVERRIDES_KEY = "bonita_ol_catalog_overrides_v1"; // itemId -> { field: value }
+  var CATALOG_ORDER_KEY = "bonita_ol_catalog_order_v1"; // "store|supplier" -> [itemId, ...]
   var SESSION_KEY_PREFIX = "bonita_ol_session_v1_";
   var SUBMISSIONS_KEY = "bonita_ol_submissions_v1";
   var APP_STATE_KEY = "bonita_ol_appstate_v1";
@@ -1197,11 +1202,63 @@
   }
 
   function loadCatalog(){
-    var cat = readJSON(CATALOG_KEY, null);
-    if(!cat){ cat = defaultCatalog(); writeJSON(CATALOG_KEY, cat); }
+    var cat = defaultCatalog();
+    var overrides = readJSON(CATALOG_OVERRIDES_KEY, {});
+    var order = readJSON(CATALOG_ORDER_KEY, {});
+
+    // Field-level edits (unit, par, supplier, etc.) apply onto whatever the
+    // current default item looks like. An override for an id that no longer
+    // exists (an item was removed in a later catalog update) is simply
+    // never applied -- harmless leftover, not an error.
+    cat.forEach(function(item){
+      var o = overrides[item.id];
+      if(!o) return;
+      Object.keys(o).forEach(function(field){ item[field] = o[field]; });
+    });
+
+    // Custom fridge-walk order applies within each store+supplier group.
+    // Items from the saved order that still exist keep that relative
+    // sequence; anything new in that group (added since the order was
+    // last saved) gets appended after them, in the default catalog's own
+    // order, rather than being lost or inserted somewhere arbitrary.
+    Object.keys(order).forEach(function(key){
+      var slots = [];
+      cat.forEach(function(item, idx){
+        if((item.store+"|"+item.supplier) === key) slots.push(idx);
+      });
+      if(slots.length === 0) return;
+      var byId = {};
+      cat.forEach(function(item){ byId[item.id] = item; });
+      var currentIds = slots.map(function(idx){ return cat[idx].id; });
+      var savedIds = order[key].filter(function(id){ return currentIds.indexOf(id) !== -1; });
+      var newIds = currentIds.filter(function(id){ return savedIds.indexOf(id) === -1; });
+      var finalIds = savedIds.concat(newIds);
+      slots.forEach(function(slotIdx, i){ cat[slotIdx] = byId[finalIds[i]]; });
+    });
+
     return cat;
   }
-  function saveCatalog(cat){ writeJSON(CATALOG_KEY, cat); }
+
+  // Records one field edit for one item, merged into whatever's already
+  // saved for it -- never a wholesale catalog snapshot.
+  function saveCatalogFieldEdit(itemId, field, value){
+    var overrides = readJSON(CATALOG_OVERRIDES_KEY, {});
+    if(!overrides[itemId]) overrides[itemId] = {};
+    overrides[itemId][field] = value;
+    writeJSON(CATALOG_OVERRIDES_KEY, overrides);
+  }
+
+  // Records the fridge-walk order for one store+supplier group.
+  function saveCatalogOrder(store, supplier, orderedIds){
+    var order = readJSON(CATALOG_ORDER_KEY, {});
+    order[store+"|"+supplier] = orderedIds;
+    writeJSON(CATALOG_ORDER_KEY, order);
+  }
+
+  function resetCatalogEdits(){
+    writeJSON(CATALOG_OVERRIDES_KEY, {});
+    writeJSON(CATALOG_ORDER_KEY, {});
+  }
 
   function sessionKey(store, cycle){ return SESSION_KEY_PREFIX + store + "_" + cycle; }
   function loadSession(store, cycle){
@@ -1440,7 +1497,7 @@
           return el.getAttribute("data-item");
         });
         reorderSupplierItems(state.itemInfoFilter, state.reorderSupplier, ids);
-        saveCatalog(catalog);
+        saveCatalogOrder(state.itemInfoFilter, state.reorderSupplier, ids);
       }
     });
   }
@@ -2253,8 +2310,8 @@
       render();
     }
     else if(action === "reset-catalog"){
-      catalog = defaultCatalog();
-      saveCatalog(catalog);
+      resetCatalogEdits();
+      catalog = loadCatalog();
       render();
     }
     else if(action === "fill-test-data"){
@@ -2432,7 +2489,7 @@
       // otherwise fixed at catalog-setup time, but needs to be fixable here
       // too so those gaps don't stay stuck forever.
       item.unit = el.value;
-      saveCatalog(catalog);
+      saveCatalogFieldEdit(item.id, "unit", item.unit);
       flashSaved(el);
     }
     else if(action === "edit-supplier"){
@@ -2440,7 +2497,7 @@
       // needs a full re-render (unlike the text fields, there's no
       // in-progress typing here to preserve focus for).
       item.supplier = el.value;
-      saveCatalog(catalog);
+      saveCatalogFieldEdit(item.id, "supplier", item.supplier);
       render();
     }
     else if(action === "edit-units-per-box" || action === "edit-weight-per-unit"){
@@ -2448,20 +2505,23 @@
       // switch on rounding / weight-calc logic that reads these as set.
       var raw = el.value.trim();
       var parsed = raw === "" ? null : (parseFloat(raw) || 0);
-      item[action === "edit-units-per-box" ? "unitsPerBox" : "weightPerUnit"] = parsed;
-      saveCatalog(catalog);
+      var field = action === "edit-units-per-box" ? "unitsPerBox" : "weightPerUnit";
+      item[field] = parsed;
+      saveCatalogFieldEdit(item.id, field, parsed);
       flashSaved(el);
       updateBoxWeight(item);
     }
     else if(action === "edit-par-wed" || action === "edit-par-sun"){
-      item[action === "edit-par-wed" ? "parWed" : "parSun"] = parseFloat(el.value) || 0;
+      var parField = action === "edit-par-wed" ? "parWed" : "parSun";
+      item[parField] = parseFloat(el.value) || 0;
+      saveCatalogFieldEdit(item.id, parField, item[parField]);
       // A real edit means this is no longer an invented placeholder par.
       if(item.placeholder){
         item.placeholder = false;
+        saveCatalogFieldEdit(item.id, "placeholder", false);
         var badge = el.closest(".catalog-card") && el.closest(".catalog-card").querySelector(".est-badge");
         if(badge) badge.remove();
       }
-      saveCatalog(catalog);
       flashSaved(el);
     }
   });
