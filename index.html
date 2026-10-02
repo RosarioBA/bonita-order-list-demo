@@ -2560,7 +2560,10 @@
       items: items.map(function(item){
         var e = entryFor(session, item);
         return {
-          id:item.id, name:item.name, nameEs:item.nameEs, supplier:item.supplier,
+          // Firestore rejects any field that's `undefined` (even nested),
+          // and most catalog items simply omit nameEs rather than setting
+          // it to null -- coerce it so the shared write doesn't fail.
+          id:item.id, name:item.name, nameEs:item.nameEs || null, supplier:item.supplier,
           unit:item.unit, unitsPerBox:item.unitsPerBox,
           onHand:e.onHand, order:e.order, skipped:e.skipped
         };
