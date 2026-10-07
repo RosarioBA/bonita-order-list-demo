@@ -483,6 +483,16 @@
   .settings-danger:active{background:var(--danger); color:var(--accent-contrast);}
 
   /* ---------- drag-to-reorder (Item Info) ---------- */
+  .section-head{display:flex; align-items:center; gap:8px; padding:4px 6px 6px;}
+  .section-head .reorder-btn{margin-left:auto;}
+  .bar-section{
+    margin-top:10px; border-top:2px solid var(--accent); border-bottom:2px solid var(--accent);
+    padding:4px 0 6px;
+  }
+  .bar-section-label{
+    font-size:.78rem; color:var(--accent-ink); font-weight:800;
+    letter-spacing:.03em; text-transform:uppercase;
+  }
   .reorder-btn{
     background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px;
     padding:5px 12px; font-size:.72rem; font-weight:700; color:var(--accent-ink); cursor:pointer;
@@ -1240,15 +1250,17 @@
       Object.keys(o).forEach(function(field){ item[field] = o[field]; });
     });
 
-    // Custom fridge-walk order applies within each store+supplier group.
-    // Items from the saved order that still exist keep that relative
-    // sequence; anything new in that group (added since the order was
-    // last saved) gets appended after them, in the default catalog's own
-    // order, rather than being lost or inserted somewhere arbitrary.
+    // Custom fridge-walk order applies within each store+supplier+section
+    // group (food and Bar are reordered independently -- see
+    // isBarCategory). Items from the saved order that still exist keep
+    // that relative sequence; anything new in that group (added since the
+    // order was last saved) gets appended after them, in the default
+    // catalog's own order, rather than being lost or inserted arbitrarily.
     Object.keys(order).forEach(function(key){
       var slots = [];
       cat.forEach(function(item, idx){
-        if((item.store+"|"+item.supplier) === key) slots.push(idx);
+        var itemKey = item.store+"|"+item.supplier+"|"+(isBarCategory(item.category)?"bar":"food");
+        if(itemKey === key) slots.push(idx);
       });
       if(slots.length === 0) return;
       var byId = {};
@@ -1274,9 +1286,9 @@
   }
 
   // Records the fridge-walk order for one store+supplier group.
-  function saveCatalogOrder(store, supplier, orderedIds){
+  function saveCatalogOrder(store, supplier, section, orderedIds){
     var order = readJSON(CATALOG_ORDER_KEY, {});
-    order[store+"|"+supplier] = orderedIds;
+    order[store+"|"+supplier+"|"+section] = orderedIds;
     writeJSON(CATALOG_ORDER_KEY, order);
     scheduleCatalogSync();
   }
@@ -1322,6 +1334,7 @@
     confirmSubmitOpen: false,
     confirmResetOpen: false,
     reorderSupplier: null, // supplier name currently in drag-to-reorder mode on Item Info, or null
+    reorderSection: null, // "food" | "bar" -- which half of that supplier is being reordered
     historyItems: undefined, // undefined = not fetched yet, null = loading, array = loaded (shared across everyone)
     historyError: false,
     historyReturnTo: null,
@@ -1497,10 +1510,13 @@
   // rather than adding a sort-index field — items keep their absolute
   // "slots" (so other suppliers/stores are untouched) but the slots
   // belonging to this store+supplier get filled with the new sequence.
-  function reorderSupplierItems(store, supplier, newOrderIds){
+  // Bar and food are reordered independently within a supplier (Bar stays
+  // a separate section, never interleaved with food items even while
+  // dragging), so this only touches the slots belonging to that one section.
+  function reorderSupplierItems(store, supplier, section, newOrderIds){
     var slots = [];
     catalog.forEach(function(item, idx){
-      if(item.store === store && item.supplier === supplier) slots.push(idx);
+      if(item.store === store && item.supplier === supplier && (isBarCategory(item.category)?"bar":"food") === section) slots.push(idx);
     });
     var byId = {};
     catalog.forEach(function(item){ byId[item.id] = item; });
@@ -1523,8 +1539,8 @@
         var ids = Array.prototype.map.call(container.querySelectorAll("[data-item]"), function(el){
           return el.getAttribute("data-item");
         });
-        reorderSupplierItems(state.itemInfoFilter, state.reorderSupplier, ids);
-        saveCatalogOrder(state.itemInfoFilter, state.reorderSupplier, ids);
+        reorderSupplierItems(state.itemInfoFilter, state.reorderSupplier, state.reorderSection, ids);
+        saveCatalogOrder(state.itemInfoFilter, state.reorderSupplier, state.reorderSection, ids);
       }
     });
   }
@@ -1653,21 +1669,32 @@
     return list;
   }
 
-  // Groups by supplier only -- category is no longer a hard section break,
-  // since real fridges/shelves don't respect the app's category labels any
-  // more than they respect alphabetical order. Items within a supplier
-  // stay in whatever order the catalog array has them in (the default
-  // authoring order, or a fridge-walk order once someone's dragged them),
-  // and each item shows its category as a small inline tag instead.
+  // Bar is a different department, not just another food category -- it
+  // keeps its own hard section break (and its own independent reorder
+  // scope) separate from everything else in the supplier, while all the
+  // *food* categories (Dairy, Produce, etc.) no longer do.
+  function isBarCategory(category){
+    return category === "Bar" || (!!category && category.indexOf("Bar:") === 0);
+  }
+
+  // Groups by supplier, then splits each supplier into two flat lists:
+  // regular items and Bar items. Category is no longer a hard section
+  // break within either list -- real fridges/shelves don't respect the
+  // app's category labels any more than they respect alphabetical order.
+  // Items stay in whatever order the catalog array has them in (the
+  // default authoring order, or a fridge-walk order once someone's
+  // dragged them), and each item shows its category as a small inline
+  // tag instead of a header.
   function groupBySupplier(items){
     var supplierOrder = [];
     var suppliers = {};
     items.forEach(function(item){
       if(!suppliers[item.supplier]){
-        suppliers[item.supplier] = { supplier:item.supplier, items:[] };
+        suppliers[item.supplier] = { supplier:item.supplier, items:[], barItems:[] };
         supplierOrder.push(item.supplier);
       }
-      suppliers[item.supplier].items.push(item);
+      var sg = suppliers[item.supplier];
+      (isBarCategory(item.category) ? sg.barItems : sg.items).push(item);
     });
     supplierOrder.sort(function(a, b){
       var ia = SUPPLIER_ORDER.indexOf(a), ib = SUPPLIER_ORDER.indexOf(b);
@@ -1696,10 +1723,17 @@
     var visibleItems = items.filter(function(i){ return matchesSearch(i, state.searchQuery); });
     var groups = groupBySupplier(visibleItems);
     var groupsHtml = groups.map(function(g){
-      var remaining = g.items.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      var allItems = g.items.concat(g.barItems);
+      var remaining = allItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
       // Search always shows full results, regardless of collapse state.
       var collapsed = state.searchQuery ? false : supplierCollapsed(session, g.supplier, remaining);
       var rowsHtml = collapsed ? "" : g.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("");
+      var barHtml = (!collapsed && g.barItems.length) ? (
+        '<div class="bar-section">'+
+          '<div class="section-head"><span class="bar-section-label">🍹 Bar</span></div>'+
+          g.barItems.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")+
+        '</div>'
+      ) : "";
       return (
         '<div class="supplier-group">'+
           '<button class="supplier-head" data-action="toggle-supplier" data-supplier="'+g.supplier+'">'+
@@ -1709,6 +1743,7 @@
             '</span><span class="chevron">'+(collapsed?"▸":"▾")+'</span></span>'+
           '</button>'+
           rowsHtml+
+          barHtml+
         '</div>'
       );
     }).join("");
@@ -1897,15 +1932,17 @@
     var items = catalog.filter(function(i){ return i.store===filter; });
     items = items.filter(function(i){ return matchesSearch(i, state.itemInfoSearch); });
     var groups = groupBySupplier(items);
-    var groupsHtml = groups.map(function(g){
-      var isReordering = state.reorderSupplier === g.supplier;
-      var reorderBtn = '<button class="reorder-btn" data-action="'+(isReordering?"exit-reorder":"enter-reorder")+'" data-supplier="'+g.supplier+'">'+
+    // Bar reorders independently from food, and never interleaves with
+    // it, so each gets its own little section with its own Reorder button.
+    function renderInfoSection(g, sectionItems, section, label){
+      var isReordering = state.reorderSupplier === g.supplier && state.reorderSection === section;
+      var reorderBtn = '<button class="reorder-btn" data-action="'+(isReordering?"exit-reorder":"enter-reorder")+'" data-supplier="'+g.supplier+'" data-section="'+section+'">'+
         (isReordering ? "Done" : "⇅ Reorder") + '</button>';
       var bodyHtml;
       if(isReordering){
         bodyHtml = '<p class="reorder-hint">Drag items into the order you actually walk past them — this ignores category, since your shelves don\'t.</p>'+
           '<div class="reorder-list">'+
-            g.items.map(function(item){
+            sectionItems.map(function(item){
               return '<div class="reorder-row" data-item="'+item.id+'">'+
                 '<span class="drag-handle">⠿</span>'+
                 '<span class="reorder-name">'+item.name+(item.category ? ' <span class="reorder-category">· '+item.category+'</span>' : '')+'</span>'+
@@ -1913,9 +1950,22 @@
             }).join("")+
           '</div>';
       } else {
-        bodyHtml = g.items.map(renderCatalogCard).join("");
+        bodyHtml = sectionItems.map(renderCatalogCard).join("");
       }
-      return '<div class="supplier-group"><div class="supplier-head"><h2>'+g.supplier+'</h2>'+reorderBtn+'</div>'+bodyHtml+'</div>';
+      return (
+        '<div class="'+(label ? 'bar-section' : '')+'">'+
+          '<div class="section-head">'+(label ? '<span class="bar-section-label">'+label+'</span>' : '')+reorderBtn+'</div>'+
+          bodyHtml+
+        '</div>'
+      );
+    }
+    var groupsHtml = groups.map(function(g){
+      var foodHtml = g.items.length ? renderInfoSection(g, g.items, "food", null) : "";
+      var barHtml = g.barItems.length ? renderInfoSection(g, g.barItems, "bar", "🍹 Bar") : "";
+      return '<div class="supplier-group"><div class="supplier-head"><h2>'+g.supplier+'</h2></div>'+
+        foodHtml+
+        barHtml+
+      '</div>';
     }).join("");
     if(items.length === 0){
       groupsHtml = '<div class="empty-search">No items match "'+escHtml(state.itemInfoSearch)+'".</div>';
@@ -2386,15 +2436,17 @@
       go("print");
     }
     else if(action === "enter-reorder"){
-      // The reorder list always shows every item for this supplier, so a
-      // stale search filter can't silently drop items out of the list
+      // The reorder list always shows every item for this supplier+section,
+      // so a stale search filter can't silently drop items out of the list
       // reorderSupplierItems() expects to see.
       state.itemInfoSearch = "";
       state.reorderSupplier = el.getAttribute("data-supplier");
+      state.reorderSection = el.getAttribute("data-section");
       render();
     }
     else if(action === "exit-reorder"){
       state.reorderSupplier = null;
+      state.reorderSection = null;
       render();
     }
     else if(action === "request-reset"){
