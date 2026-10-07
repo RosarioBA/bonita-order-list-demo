@@ -1500,6 +1500,23 @@
   var app = document.getElementById("app");
 
   function render(){
+    // A row auto-collapsing (e.g. a supplier/section finishing and folding
+    // up) shrinks the page height above wherever you're looking, which
+    // otherwise visibly drags the whole list up/down under you. Anchor to
+    // whichever item row is currently topmost on screen before rebuilding
+    // the DOM, then nudge the scroll position after so that same row
+    // stays exactly where it was -- nothing appears to move underneath you.
+    var anchorId = null, anchorTop = 0;
+    var rows = app.querySelectorAll("[data-item]");
+    for(var i=0;i<rows.length;i++){
+      var rect = rows[i].getBoundingClientRect();
+      if(rect.bottom > 0){
+        anchorId = rows[i].getAttribute("data-item");
+        anchorTop = rect.top;
+        break;
+      }
+    }
+
     var html = "";
     if(state.screen === "store") html = renderStoreSelect();
     else if(state.screen === "name") html = renderNameSelect();
@@ -1515,6 +1532,14 @@
     app.innerHTML = html;
     updateStickyOffsets();
     initSortable();
+
+    if(anchorId){
+      var freshEl = app.querySelector('[data-item="'+anchorId+'"]');
+      if(freshEl){
+        var delta = freshEl.getBoundingClientRect().top - anchorTop;
+        if(delta) window.scrollBy(0, delta);
+      }
+    }
   }
 
   // The order list header (store/search/cycle/progress/columns) and the
