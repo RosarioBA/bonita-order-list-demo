@@ -790,7 +790,7 @@
       // Dried Herbs
       { id:"cafe-dried-chives", store:"cafe", supplier:"Eugen", category:"Dried Herbs", name:"Dried chives", nameEs:"Cebollino seco", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
       // Fresh Fruit
-      { id:"cafe-apples", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Apples", nameEs:"Manzanas", unit:"units", unitsPerBox:60, weightPerUnit:null, parWed:20, parSun:20 },
+      { id:"cafe-apples", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Apples", nameEs:"Manzanas", unit:"box", unitsPerBox:1, weightPerUnit:null, parWed:0.25, parSun:0.25 },
       { id:"cafe-avocados", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Avocados", nameEs:"Aguacates", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:10, parSun:10 },
       { id:"cafe-bananas", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Bananas", nameEs:"Bananos", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
       { id:"cafe-fresh-blueberries", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Fresh blueberries", nameEs:"Arándanos frescos", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
@@ -1418,6 +1418,18 @@
     entry.order = String(suggested);
   }
 
+  // An item tracked by eye as a fraction of a box (unitsPerBox:1 is the
+  // signal — see Apples) gets quarter-box quick-picks with friendly glyphs
+  // instead of raw decimals like "0.25", since nobody's actually counting
+  // individual apples to produce that number.
+  function isBoxFractionItem(item){
+    return item.unitsPerBox === 1;
+  }
+  var BOX_FRACTION_GLYPHS = { 0:"Empty", 0.25:"¼", 0.5:"½", 0.75:"¾", 1:"Full", 1.25:"1¼", 1.5:"1½", 1.75:"1¾", 2:"2" };
+  function fmtBoxFraction(n){
+    return BOX_FRACTION_GLYPHS.hasOwnProperty(n) ? BOX_FRACTION_GLYPHS[n] : fmt(n);
+  }
+
   // Quick-pick values for the "You have" dropdown: 0-20 covers most
   // real counts, a few round numbers beyond that for high-count items,
   // and the item's own par targets (even fractional ones, like 0.5) so
@@ -1425,7 +1437,11 @@
   // in too, so switching back from manual entry never hides what's there.
   function onHandOptions(item, currentValue){
     var opts = [];
-    for(var i=0;i<=10;i++) opts.push(i);
+    if(isBoxFractionItem(item)){
+      opts = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+    } else {
+      for(var i=0;i<=10;i++) opts.push(i);
+    }
     [item.parWed, item.parSun].forEach(function(p){
       if(p!=null && opts.indexOf(p)===-1) opts.push(p);
     });
@@ -1795,11 +1811,12 @@
         'value="'+entry.onHand+'" data-action="input-onhand" data-item="'+item.id+'">';
     }
     var isOpen = state.openOnHandPicker === item.id;
-    var displayVal = entry.onHand === "" ? "–" : fmt(parseFloat(entry.onHand));
+    var isFraction = isBoxFractionItem(item);
+    var displayVal = entry.onHand === "" ? "–" : (isFraction ? fmtBoxFraction(parseFloat(entry.onHand)) : fmt(parseFloat(entry.onHand)));
     var opts = onHandOptions(item, entry.onHand);
     var optionsHtml = opts.map(function(o){
       return '<button class="onhand-option'+(String(o)===String(entry.onHand)?' active':'')+'" '+
-        'data-action="pick-onhand" data-item="'+item.id+'" data-value="'+o+'">'+fmt(o)+'</button>';
+        'data-action="pick-onhand" data-item="'+item.id+'" data-value="'+o+'">'+(isFraction ? fmtBoxFraction(o) : fmt(o))+'</button>';
     }).join("") + '<button class="onhand-option" data-action="pick-onhand-other" data-item="'+item.id+'">Other…</button>';
 
     return (
@@ -1831,7 +1848,7 @@
           '<div class="row-name">'+
             '<button class="item-name" data-action="toggle-info" data-item="'+item.id+'">'+item.name+
               '<span class="info-caret">'+(infoOpen?"▾":"ⓘ")+'</span></button>'+
-            '<div class="row-hint">Par ('+cycleLabel(state.cycle)+'): '+fmt(par)+' '+item.unit+
+            '<div class="row-hint">Par ('+cycleLabel(state.cycle)+'): '+(isBoxFractionItem(item)?fmtBoxFraction(par):fmt(par))+' '+item.unit+
               (item.placeholder ? ' <span class="est-badge" title="No par was given in the source sheet — this is a guess, edit it on Item Info">est.</span>' : '')+
               (item.nameEs ? ' <span class="name-es">· '+item.nameEs+'</span>' : '')+
               (item.category ? ' <span class="row-category">· '+item.category+'</span>' : '')+
