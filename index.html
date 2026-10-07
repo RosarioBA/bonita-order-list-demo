@@ -494,6 +494,13 @@
     font-size:.78rem; color:var(--accent-ink); font-weight:800;
     letter-spacing:.03em; text-transform:uppercase;
   }
+  .section-actions{display:flex; justify-content:flex-end; padding:0 6px 4px;}
+  .section-head .skip-section-btn{margin-left:auto;}
+  .skip-section-btn{
+    background:var(--skip-tint); border:1px solid var(--skip); border-radius:999px;
+    padding:4px 11px; font-size:.68rem; font-weight:700; color:var(--skip); cursor:pointer;
+  }
+  .skip-section-btn:active{transform:scale(.96);}
   .reorder-btn{
     background:var(--surface-2); border:1px solid var(--border-strong); border-radius:999px;
     padding:5px 12px; font-size:.72rem; font-weight:700; color:var(--accent-ink); cursor:pointer;
@@ -1746,10 +1753,19 @@
       var remaining = allItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
       // Search always shows full results, regardless of collapse state.
       var collapsed = state.searchQuery ? false : supplierCollapsed(session, g.supplier, remaining);
-      var rowsHtml = collapsed ? "" : g.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("");
+      var foodRemaining = g.items.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      var barRemaining = g.barItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      var skipFoodBtn = (!collapsed && foodRemaining > 0) ?
+        '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+g.supplier+'" data-section="food">Skip rest</button>' : "";
+      var rowsHtml = collapsed ? "" : (
+        (skipFoodBtn ? '<div class="section-actions">'+skipFoodBtn+'</div>' : "") +
+        g.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")
+      );
       var barHtml = (!collapsed && g.barItems.length) ? (
         '<div class="bar-section">'+
-          '<div class="section-head"><span class="bar-section-label">🍹 Bar</span></div>'+
+          '<div class="section-head"><span class="bar-section-label">🍹 Bar</span>'+
+            (barRemaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+g.supplier+'" data-section="bar">Skip rest</button>' : "")+
+          '</div>'+
           g.barItems.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")+
         '</div>'
       ) : "";
@@ -2356,6 +2372,24 @@
       var entry = entryFor(session, item);
       entry.skipped = !entry.skipped;
       saveSession(state.store, state.cycle, session);
+      render();
+    }
+    else if(action === "skip-section"){
+      // Bulk-skip whatever's left in just this one food/Bar section of a
+      // supplier -- for whoever's only responsible for half the list (e.g.
+      // kitchen staff skipping Bar, or vice versa), so they're not tapping
+      // Skip on every single item by hand.
+      var skSupplier = el.getAttribute("data-supplier");
+      var skSection = el.getAttribute("data-section");
+      var skItems = itemsForStore(state.store).filter(function(i){
+        return i.supplier === skSupplier && (isBarCategory(i.category) ? "bar" : "food") === skSection;
+      });
+      var skSession = loadSession(state.store, state.cycle);
+      skItems.forEach(function(item){
+        var e = entryFor(skSession, item);
+        if(!isTouched(e)) e.skipped = true;
+      });
+      saveSession(state.store, state.cycle, skSession);
       render();
     }
     else if(action === "reset-auto"){
