@@ -1783,9 +1783,10 @@
       var barRemaining = g.barItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
       var foodSkipped = g.items.filter(function(i){ return entryFor(session,i).skipped; }).length;
       var barSkipped = g.barItems.filter(function(i){ return entryFor(session,i).skipped; }).length;
+      var gs = escHtml(g.supplier);
       var skipFoodBtn =
-        (foodRemaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+g.supplier+'" data-section="food">Skip rest</button>' : "")+
-        (foodSkipped > 0 ? '<button class="skip-section-btn unskip" data-action="unskip-section" data-supplier="'+g.supplier+'" data-section="food">Unskip all</button>' : "");
+        (foodRemaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+gs+'" data-section="food">Skip rest</button>' : "")+
+        (foodSkipped > 0 ? '<button class="skip-section-btn unskip" data-action="unskip-section" data-supplier="'+gs+'" data-section="food">Unskip all</button>' : "");
       var rowsHtml = collapsed ? "" : (
         (skipFoodBtn ? '<div class="section-actions">'+skipFoodBtn+'</div>' : "") +
         g.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")
@@ -1793,16 +1794,16 @@
       var barHtml = (!collapsed && g.barItems.length) ? (
         '<div class="bar-section">'+
           '<div class="section-head"><span class="bar-section-label">🍹 Bar</span>'+
-            (barRemaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+g.supplier+'" data-section="bar">Skip rest</button>' : "")+
-            (barSkipped > 0 ? '<button class="skip-section-btn unskip" data-action="unskip-section" data-supplier="'+g.supplier+'" data-section="bar">Unskip all</button>' : "")+
+            (barRemaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+gs+'" data-section="bar">Skip rest</button>' : "")+
+            (barSkipped > 0 ? '<button class="skip-section-btn unskip" data-action="unskip-section" data-supplier="'+gs+'" data-section="bar">Unskip all</button>' : "")+
           '</div>'+
           g.barItems.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")+
         '</div>'
       ) : "";
       return (
         '<div class="supplier-group">'+
-          '<button class="supplier-head" data-action="toggle-supplier" data-supplier="'+g.supplier+'">'+
-            '<h2>'+g.supplier+'</h2>'+
+          '<button class="supplier-head" data-action="toggle-supplier" data-supplier="'+gs+'">'+
+            '<h2>'+gs+'</h2>'+
             '<span class="supplier-head-right"><span class="count">'+
               (remaining===0 ? "all reviewed" : remaining+" left")+
             '</span><span class="chevron">'+(collapsed?"▸":"▾")+'</span></span>'+
@@ -1819,7 +1820,7 @@
     return (
       '<div class="app-header">'+
         '<div class="row1">'+
-          '<div class="identity"><span class="store">'+storeName+'</span><span class="staff">'+state.staffName+'</span></div>'+
+          '<div class="identity"><span class="store">'+escHtml(storeName)+'</span><span class="staff">'+escHtml(state.staffName)+'</span></div>'+
           '<div class="header-actions">'+
             '<button class="icon-btn" data-action="open-item-info" title="Item catalog"><span>📖</span><span class="icon-btn-label">Catalog</span></button>'+
             '<button class="icon-btn" data-action="open-history" title="Order history"><span>🕑</span><span class="icon-btn-label">History</span></button>'+
@@ -1895,17 +1896,17 @@
         '<div class="item-row row-grid">'+
           '<span class="status-dot '+dotClass+'"></span>'+
           '<div class="row-name">'+
-            '<button class="item-name" data-action="toggle-info" data-item="'+item.id+'">'+item.name+
+            '<button class="item-name" data-action="toggle-info" data-item="'+item.id+'">'+escHtml(item.name)+
               '<span class="info-caret">'+(infoOpen?"▾":"ⓘ")+'</span></button>'+
-            '<div class="row-hint">Par ('+cycleLabel(state.cycle)+'): '+(isBoxFractionItem(item)?fmtBoxFraction(par):fmt(par))+' '+item.unit+
+            '<div class="row-hint">Par ('+cycleLabel(state.cycle)+'): '+(isBoxFractionItem(item)?fmtBoxFraction(par):fmt(par))+' '+escHtml(item.unit)+
               (item.placeholder ? ' <span class="est-badge" title="No par was given in the source sheet — this is a guess, edit it on Item Info">est.</span>' : '')+
-              (item.nameEs ? ' <span class="name-es">· '+item.nameEs+'</span>' : '')+
-              (item.category ? ' <span class="row-category">· '+item.category+'</span>' : '')+
+              (item.nameEs ? ' <span class="name-es">· '+escHtml(item.nameEs)+'</span>' : '')+
+              (item.category ? ' <span class="row-category">· '+escHtml(item.category)+'</span>' : '')+
             '</div>'+
           '</div>'+
           '<div class="cell-wrap">'+renderOnHandCell(item, entry)+'</div>'+
           '<div class="cell-wrap"><input class="cell-input order" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="0" '+
-            'value="'+entry.order+'" data-action="input-order" data-item="'+item.id+'">'+
+            'value="'+escHtml(entry.order)+'" data-action="input-order" data-item="'+item.id+'">'+
             (entry.manualOrder ? '<span class="manual-dot" title="manually entered"></span>' : '')+
           '</div>'+
           '<button class="skip-btn '+(entry.skipped?'active':'')+'" data-action="toggle-skip" data-item="'+item.id+'">'+
@@ -1925,8 +1926,8 @@
     var bw = boxWeight(item);
     return (
       '<div class="info-panel">'+
-        '<div class="info-row"><span>Supplier</span><b>'+item.supplier+(item.category?' · '+item.category:'')+'</b></div>'+
-        '<div class="info-row"><span>Unit</span><b>'+item.unit+'</b></div>'+
+        '<div class="info-row"><span>Supplier</span><b>'+escHtml(item.supplier)+(item.category?' · '+escHtml(item.category):'')+'</b></div>'+
+        '<div class="info-row"><span>Unit</span><b>'+escHtml(item.unit)+'</b></div>'+
         '<div class="info-row"><span>Units / box</span><b>'+(item.unitsPerBox==null ? "—" : fmt(item.unitsPerBox))+'</b></div>'+
         '<div class="info-row"><span>Weight / unit</span><b>'+(item.weightPerUnit==null ? "—" : fmt(item.weightPerUnit)+" g")+'</b></div>'+
         '<div class="info-row"><span>Box weight</span><b>'+(bw==null ? "—" : fmt(bw)+" g")+'</b></div>'+
@@ -2018,8 +2019,9 @@
     // Bar reorders independently from food, and never interleaves with
     // it, so each gets its own little section with its own Reorder button.
     function renderInfoSection(g, sectionItems, section, label){
+      var gs = escHtml(g.supplier);
       var isReordering = state.reorderSupplier === g.supplier && state.reorderSection === section;
-      var reorderBtn = '<button class="reorder-btn" data-action="'+(isReordering?"exit-reorder":"enter-reorder")+'" data-supplier="'+g.supplier+'" data-section="'+section+'">'+
+      var reorderBtn = '<button class="reorder-btn" data-action="'+(isReordering?"exit-reorder":"enter-reorder")+'" data-supplier="'+gs+'" data-section="'+section+'">'+
         (isReordering ? "Done" : "⇅ Reorder") + '</button>';
       var bodyHtml;
       if(isReordering){
@@ -2028,7 +2030,7 @@
             sectionItems.map(function(item){
               return '<div class="reorder-row" data-item="'+item.id+'">'+
                 '<span class="drag-handle">⠿</span>'+
-                '<span class="reorder-name">'+item.name+(item.category ? ' <span class="reorder-category">· '+item.category+'</span>' : '')+'</span>'+
+                '<span class="reorder-name">'+escHtml(item.name)+(item.category ? ' <span class="reorder-category">· '+escHtml(item.category)+'</span>' : '')+'</span>'+
               '</div>';
             }).join("")+
           '</div>';
@@ -2045,7 +2047,7 @@
     var groupsHtml = groups.map(function(g){
       var foodHtml = g.items.length ? renderInfoSection(g, g.items, "food", null) : "";
       var barHtml = g.barItems.length ? renderInfoSection(g, g.barItems, "bar", "🍹 Bar") : "";
-      return '<div class="supplier-group"><div class="supplier-head"><h2>'+g.supplier+'</h2></div>'+
+      return '<div class="supplier-group"><div class="supplier-head"><h2>'+escHtml(g.supplier)+'</h2></div>'+
         foodHtml+
         barHtml+
       '</div>';
@@ -2081,18 +2083,18 @@
     var bw = boxWeight(item);
     return (
       '<div class="catalog-card" data-item="'+item.id+'">'+
-        '<div class="head"><div><div class="item-name">'+item.name+'<span class="type-chip">'+item.unit+'</span>'+
+        '<div class="head"><div><div class="item-name">'+escHtml(item.name)+'<span class="type-chip">'+escHtml(item.unit)+'</span>'+
           (item.placeholder ? '<span class="est-badge" title="No par was given in the source sheet">est.</span>' : '')+'</div>'+
-          (item.nameEs ? '<div class="name-es">'+item.nameEs+'</div>' : '')+
-          '<div class="store-tag">'+storeName+' · '+item.supplier+(item.category?' · '+item.category:'')+'</div></div>'+
+          (item.nameEs ? '<div class="name-es">'+escHtml(item.nameEs)+'</div>' : '')+
+          '<div class="store-tag">'+escHtml(storeName)+' · '+escHtml(item.supplier)+(item.category?' · '+escHtml(item.category):'')+'</div></div>'+
           '<span class="saved-flash" data-role="saved-flash">saved</span></div>'+
         '<div class="catalog-fields">'+
-          '<div class="field"><label>Unit</label><input type="text" placeholder="—" value="'+item.unit+'" data-action="edit-unit" data-item="'+item.id+'"></div>'+
+          '<div class="field"><label>Unit</label><input type="text" placeholder="—" value="'+escHtml(item.unit)+'" data-action="edit-unit" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Units / box</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.unitsPerBox==null?"":item.unitsPerBox)+'" data-action="edit-units-per-box" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Weight / unit (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.weightPerUnit==null?"":item.weightPerUnit)+'" data-action="edit-weight-per-unit" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Supplier</label><select data-action="edit-supplier" data-item="'+item.id+'">'+
             suppliersForStore(item.store).map(function(s){
-              return '<option value="'+s+'"'+(s===item.supplier?' selected':'')+'>'+s+'</option>';
+              return '<option value="'+escHtml(s)+'"'+(s===item.supplier?' selected':'')+'>'+escHtml(s)+'</option>';
             }).join("")+
           '</select></div>'+
         '</div>'+
@@ -2119,7 +2121,7 @@
       '<div class="success-screen">'+
         '<div class="check">✓</div>'+
         '<h2>List saved</h2>'+
-        '<p><b>'+sub.storeName+'</b> · '+cycleLabel(sub.cycle)+' cycle<br>'+sub.date+' · submitted by '+sub.staffName+'<br>'+sub.itemCount+' items on the list</p>'+
+        '<p><b>'+escHtml(sub.storeName)+'</b> · '+cycleLabel(sub.cycle)+' cycle<br>'+escHtml(sub.date)+' · submitted by '+escHtml(sub.staffName)+'<br>'+escHtml(sub.itemCount)+' items on the list</p>'+
         historyNote+
         '<button class="submit-btn" style="max-width:260px" data-action="copy-order-success">📋 Copy order</button>'+
         '<div class="copy-flash" data-role="copy-flash" hidden></div>'+
@@ -2174,10 +2176,10 @@
     } else {
       body = state.historyItems.map(function(sub){
         return (
-          '<button class="history-row" data-action="view-history-item" data-id="'+sub.id+'">'+
+          '<button class="history-row" data-action="view-history-item" data-id="'+escHtml(sub.id)+'">'+
             '<span class="history-row-main">'+
-              '<b>'+sub.storeName+' · '+cycleLabel(sub.cycle)+'</b>'+
-              '<span class="history-meta">'+sub.date+' · '+sub.staffName+' · '+sub.itemCount+' items</span>'+
+              '<b>'+escHtml(sub.storeName)+' · '+cycleLabel(sub.cycle)+'</b>'+
+              '<span class="history-meta">'+escHtml(sub.date)+' · '+escHtml(sub.staffName)+' · '+escHtml(sub.itemCount)+' items</span>'+
             '</span>'+
             '<span class="history-chevron">›</span>'+
           '</button>'
@@ -2293,12 +2295,12 @@
       var rows = g.lines.map(function(l){
         return (
           '<div class="print-row">'+
-            '<span>'+l.item.name+(l.item.nameEs ? ' <i>('+l.item.nameEs+')</i>' : '')+'</span>'+
-            '<b>'+printQty(l.item, l.order)+'</b>'+
+            '<span>'+escHtml(l.item.name)+(l.item.nameEs ? ' <i>('+escHtml(l.item.nameEs)+')</i>' : '')+'</span>'+
+            '<b>'+escHtml(printQty(l.item, l.order))+'</b>'+
           '</div>'
         );
       }).join("");
-      return '<div class="print-supplier"><h3>'+g.supplier+'</h3>'+rows+'</div>';
+      return '<div class="print-supplier"><h3>'+escHtml(g.supplier)+'</h3>'+rows+'</div>';
     }).join("");
     if(groups.length === 0) groupsHtml = '<p class="print-empty">Nothing to order this cycle.</p>';
 
@@ -2328,8 +2330,8 @@
         '<div class="no-print copy-flash" data-role="copy-flash" hidden>Copied — paste it into WhatsApp, email, or Notes.</div>'+
         '<div class="print-header">'+
           '<div class="wordmark">Bonita</div>'+
-          '<h1>'+d.storeName+' — Order</h1>'+
-          '<p>'+cycleLabel(d.cycle)+' cycle · '+d.date+' · prepared by '+d.staffName+'</p>'+
+          '<h1>'+escHtml(d.storeName)+' — Order</h1>'+
+          '<p>'+cycleLabel(d.cycle)+' cycle · '+escHtml(d.date)+' · prepared by '+escHtml(d.staffName)+'</p>'+
         '</div>'+
         groupsHtml+
         '<p class="no-print print-hint">Can\'t copy? Just tap-and-hold on the list above to select and copy it manually.</p>'+
