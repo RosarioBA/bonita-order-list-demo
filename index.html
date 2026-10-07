@@ -1149,7 +1149,6 @@
   var cloudUid = null;
   var cloudSyncTimer = null;
   var catalogSyncTimer = null;
-  var cloudStatus = "offline"; // "offline" | "connecting" | "synced" | "error"
 
   function isFirebaseConfigured(){
     return typeof firebase !== "undefined" && FIREBASE_CONFIG.apiKey !== "REPLACE_ME";
@@ -1165,7 +1164,6 @@
   }
 
   function setCloudStatus(s){
-    cloudStatus = s;
     var el = document.querySelector("[data-role=cloud-status]");
     if(el) el.textContent = s === "synced" ? "☁ Saved" : s === "connecting" ? "☁ Saving…" : s === "error" ? "⚠ Not saved to cloud" : "";
   }
@@ -1477,6 +1475,10 @@
     var remainder = order % m;
     if(Math.abs(remainder) < 1e-6 || Math.abs(remainder - m) < 1e-6) return null;
     var rounded = Math.ceil(order / m) * m;
+    // unitsPerBox:1 means the box itself is the unit (see isBoxFractionItem,
+    // e.g. Apples) -- "(box of 1)" doesn't mean anything there, so drop the
+    // qualifier and just say how many boxes.
+    if(m === 1) return "Rounds up to " + fmt(rounded) + (rounded === 1 ? " box." : " boxes.");
     return "Rounds up to " + fmt(rounded) + " (box of " + m + ").";
   }
 
