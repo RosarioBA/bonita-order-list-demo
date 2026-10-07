@@ -301,18 +301,10 @@
   .supplier-head-right{display:flex; align-items:center; gap:8px;}
   .chevron{font-size:.65rem; color:var(--text-faint); width:10px; text-align:center;}
   .supplier-head .count{font-size:.72rem; color:var(--text-faint); font-variant-numeric:tabular-nums;}
-  .category-head{
-    font-size:.65rem; color:var(--text-faint); font-weight:700;
-    letter-spacing:.04em; padding:7px 6px 3px; text-transform:uppercase;
-    border-top:1px solid var(--border); margin-top:2px;
-  }
-  .category-head:first-of-type{border-top:none; margin-top:0;}
-  .category-head-bar, .category-head-bar:first-of-type{
-    font-size:.78rem; color:var(--accent-ink); font-weight:800;
-    letter-spacing:.03em; text-transform:uppercase;
-    border-top:2px solid var(--accent); border-bottom:2px solid var(--accent);
-    padding:8px 6px 6px; margin-top:10px;
-  }
+  /* Category is an inline tag, not a section break -- fridges and shelves
+     don't group by it, so items within a supplier stay in one continuous
+     (optionally custom-ordered) list instead of being split by it. */
+  .row-category, .reorder-category{font-size:.76rem; color:var(--text-faint); font-style:italic;}
 
   /* Spreadsheet-style row grid, shared by the column-header strip and every
      item row so the "Have"/"Order" labels line up over their inputs. */
@@ -1661,30 +1653,21 @@
     return list;
   }
 
-  // "Bar" (and its sub-categories, "Bar: Wine" etc.) is a department, not a
-  // food-type category like the rest — it gets its own louder treatment so
-  // it doesn't blend into Baking/Meat & Fish/etc while scrolling a supplier
-  // that carries both kinds of items.
-  function renderCategoryHead(category){
-    if(!category) return "";
-    if(category === "Bar" || category.indexOf("Bar:") === 0){
-      return '<div class="category-head category-head-bar">🍹 '+category+'</div>';
-    }
-    return '<div class="category-head">'+category+'</div>';
-  }
-
+  // Groups by supplier only -- category is no longer a hard section break,
+  // since real fridges/shelves don't respect the app's category labels any
+  // more than they respect alphabetical order. Items within a supplier
+  // stay in whatever order the catalog array has them in (the default
+  // authoring order, or a fridge-walk order once someone's dragged them),
+  // and each item shows its category as a small inline tag instead.
   function groupBySupplier(items){
     var supplierOrder = [];
     var suppliers = {};
     items.forEach(function(item){
       if(!suppliers[item.supplier]){
-        suppliers[item.supplier] = { supplier:item.supplier, catOrder:[], cats:{} };
+        suppliers[item.supplier] = { supplier:item.supplier, items:[] };
         supplierOrder.push(item.supplier);
       }
-      var sg = suppliers[item.supplier];
-      var key = item.category || "";
-      if(!sg.cats[key]){ sg.cats[key] = { category: item.category || null, items:[] }; sg.catOrder.push(key); }
-      sg.cats[key].items.push(item);
+      suppliers[item.supplier].items.push(item);
     });
     supplierOrder.sort(function(a, b){
       var ia = SUPPLIER_ORDER.indexOf(a), ib = SUPPLIER_ORDER.indexOf(b);
@@ -1692,10 +1675,7 @@
       if(ib === -1) ib = SUPPLIER_ORDER.length;
       return ia - ib;
     });
-    return supplierOrder.map(function(s){
-      var sg = suppliers[s];
-      return { supplier:s, categories: sg.catOrder.map(function(k){ return sg.cats[k]; }) };
-    });
+    return supplierOrder.map(function(s){ return suppliers[s]; });
   }
 
   function renderOrderList(){
@@ -1716,15 +1696,10 @@
     var visibleItems = items.filter(function(i){ return matchesSearch(i, state.searchQuery); });
     var groups = groupBySupplier(visibleItems);
     var groupsHtml = groups.map(function(g){
-      var allItems = [];
-      g.categories.forEach(function(c){ allItems = allItems.concat(c.items); });
-      var remaining = allItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      var remaining = g.items.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
       // Search always shows full results, regardless of collapse state.
       var collapsed = state.searchQuery ? false : supplierCollapsed(session, g.supplier, remaining);
-      var catsHtml = collapsed ? "" : g.categories.map(function(c){
-        var rows = c.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("");
-        return renderCategoryHead(c.category) + rows;
-      }).join("");
+      var rowsHtml = collapsed ? "" : g.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("");
       return (
         '<div class="supplier-group">'+
           '<button class="supplier-head" data-action="toggle-supplier" data-supplier="'+g.supplier+'">'+
@@ -1733,7 +1708,7 @@
               (remaining===0 ? "all reviewed" : remaining+" left")+
             '</span><span class="chevron">'+(collapsed?"▸":"▾")+'</span></span>'+
           '</button>'+
-          catsHtml+
+          rowsHtml+
         '</div>'
       );
     }).join("");
@@ -1824,6 +1799,7 @@
             '<div class="row-hint">Par ('+cycleLabel(state.cycle)+'): '+fmt(par)+' '+item.unit+
               (item.placeholder ? ' <span class="est-badge" title="No par was given in the source sheet — this is a guess, edit it on Item Info">est.</span>' : '')+
               (item.nameEs ? ' <span class="name-es">· '+item.nameEs+'</span>' : '')+
+              (item.category ? ' <span class="row-category">· '+item.category+'</span>' : '')+
             '</div>'+
           '</div>'+
           '<div class="cell-wrap">'+renderOnHandCell(item, entry)+'</div>'+
@@ -1927,22 +1903,17 @@
         (isReordering ? "Done" : "⇅ Reorder") + '</button>';
       var bodyHtml;
       if(isReordering){
-        var flatItems = [];
-        g.categories.forEach(function(c){ flatItems = flatItems.concat(c.items); });
         bodyHtml = '<p class="reorder-hint">Drag items into the order you actually walk past them — this ignores category, since your shelves don\'t.</p>'+
           '<div class="reorder-list">'+
-            flatItems.map(function(item){
+            g.items.map(function(item){
               return '<div class="reorder-row" data-item="'+item.id+'">'+
                 '<span class="drag-handle">⠿</span>'+
-                '<span class="reorder-name">'+item.name+'</span>'+
+                '<span class="reorder-name">'+item.name+(item.category ? ' <span class="reorder-category">· '+item.category+'</span>' : '')+'</span>'+
               '</div>';
             }).join("")+
           '</div>';
       } else {
-        bodyHtml = g.categories.map(function(c){
-          var rows = c.items.map(renderCatalogCard).join("");
-          return renderCategoryHead(c.category) + rows;
-        }).join("");
+        bodyHtml = g.items.map(renderCatalogCard).join("");
       }
       return '<div class="supplier-group"><div class="supplier-head"><h2>'+g.supplier+'</h2>'+reorderBtn+'</div>'+bodyHtml+'</div>';
     }).join("");
