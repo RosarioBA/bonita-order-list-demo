@@ -2091,6 +2091,8 @@
           '<div class="store-tag">'+escHtml(storeName)+' · '+escHtml(item.supplier)+(item.category?' · '+escHtml(item.category):'')+'</div></div>'+
           '<span class="saved-flash" data-role="saved-flash">saved</span></div>'+
         '<div class="catalog-fields">'+
+          '<div class="field"><label>Name</label><input type="text" value="'+escHtml(item.name)+'" data-action="edit-name" data-item="'+item.id+'"></div>'+
+          '<div class="field"><label>Name (ES)</label><input type="text" placeholder="—" value="'+escHtml(item.nameEs||"")+'" data-action="edit-name-es" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Unit</label><input type="text" placeholder="—" value="'+escHtml(item.unit)+'" data-action="edit-unit" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Units / box</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.unitsPerBox==null?"":item.unitsPerBox)+'" data-action="edit-units-per-box" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Weight / unit (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.weightPerUnit==null?"":item.weightPerUnit)+'" data-action="edit-weight-per-unit" data-item="'+item.id+'"></div>'+
@@ -2636,6 +2638,33 @@
         fresh.focus();
         var pos = cursorPos == null ? fresh.value.length : Math.min(cursorPos, fresh.value.length);
         try{ fresh.setSelectionRange(pos, pos); }catch(err){}
+      }
+      return;
+    }
+
+    if(action === "edit-name" || action === "edit-name-es"){
+      // Renaming changes the bold headline right above this input, which a
+      // plain flashSaved() (no re-render, like edit-unit) would leave
+      // stale -- so this does a full render instead, with the same
+      // cursor-position preservation as the search inputs above so typing
+      // doesn't feel like it's fighting you.
+      var nameId = el.getAttribute("data-item");
+      var nameItem = catalog.filter(function(i){return i.id===nameId;})[0];
+      if(action === "edit-name"){
+        nameItem.name = el.value;
+        saveCatalogFieldEdit(nameItem.id, "name", nameItem.name);
+      } else {
+        nameItem.nameEs = el.value || null;
+        saveCatalogFieldEdit(nameItem.id, "nameEs", nameItem.nameEs);
+      }
+      var namePos = null;
+      try{ namePos = el.selectionStart; }catch(err){}
+      render();
+      var freshName = app.querySelector('.catalog-card[data-item="'+nameId+'"] [data-action="'+action+'"]');
+      if(freshName){
+        freshName.focus();
+        var posN = namePos == null ? freshName.value.length : Math.min(namePos, freshName.value.length);
+        try{ freshName.setSelectionRange(posN, posN); }catch(err){}
       }
       return;
     }
