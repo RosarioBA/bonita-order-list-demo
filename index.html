@@ -317,8 +317,8 @@
   .column-header{
     position:sticky; top:0; z-index:6; background:var(--bg);
     padding:8px 6px 6px;
-    font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
-    color:var(--text-faint);
+    font-size:1rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text);
   }
   .column-header span:nth-child(3), .column-header span:nth-child(4){ text-align:center; }
 
@@ -361,16 +361,15 @@
   .cell-input{
     width:100%;
     border:1px solid var(--border-strong);
-    background:var(--accent);
-    color:var(--accent-contrast);
+    background:var(--surface);
     border-radius:8px;
-    padding:7px 3px;
-    font-size:20px; /* iOS/Android zoom in on focus below 16px - this avoids that */
-    font-weight:800;
+    padding:5px 3px;
+    font-size:16px; /* iOS/Android zoom in on focus below 16px - this avoids that */
+    font-weight:600;
     text-align:center;
   }
-  .cell-input:focus{border-color:var(--accent-ink);}
-  .cell-input.order{border-color:var(--accent-ink);}
+  .cell-input:focus{border-color:var(--accent);}
+  .cell-input.order{border-color:var(--accent); background:var(--surface-2);}
 
   .onhand-picker{position:relative;}
   .onhand-trigger{cursor:pointer;}
