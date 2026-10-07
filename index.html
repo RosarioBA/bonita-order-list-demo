@@ -1976,16 +1976,33 @@
       if(k && k.indexOf("bonita_ol_") === 0) keysToRemove.push(k);
     }
     keysToRemove.forEach(function(k){ try{ localStorage.removeItem(k); }catch(e){} });
-    try{ location.reload(); }catch(e){}
-    // Fallback in case a full reload gets blocked by the viewer sandbox
-    // (window.print() was, once) - the data is already wiped either way,
-    // so re-seed in memory and jump back to the start so it's visible too.
-    catalog = defaultCatalog();
-    state.store = null; state.staffName = null; state.lastSubmission = null;
-    state.expandedInfo = {}; state.customOnHand = {}; state.openOnHandPicker = null;
-    state.confirmResetOpen = false; state.confirmSubmitOpen = false; state.printData = null;
-    state.screen = "store";
-    render();
+
+    // Local wipe alone isn't enough: this device's private cloud backup
+    // (submissions, in-progress sessions) would otherwise restore itself
+    // right back on the very next load. Deliberately NOT touching
+    // shared_catalog here -- that's shared data, not this device's own,
+    // and should survive a per-device reset.
+    function finishReset(){
+      try{ location.reload(); }catch(e){}
+      // Fallback in case a full reload gets blocked by the viewer sandbox
+      // (window.print() was, once) - the data is already wiped either way,
+      // so re-seed in memory and jump back to the start so it's visible too.
+      catalog = defaultCatalog();
+      state.store = null; state.staffName = null; state.lastSubmission = null;
+      state.expandedInfo = {}; state.customOnHand = {}; state.openOnHandPicker = null;
+      state.confirmResetOpen = false; state.confirmSubmitOpen = false; state.printData = null;
+      state.screen = "store";
+      render();
+    }
+
+    if(isFirebaseConfigured() && cloudReady && cloudUid){
+      // Wait for the delete to actually go out before reloading -- an
+      // in-flight request can get cancelled by the page unload otherwise.
+      firebase.firestore().collection("users").doc(cloudUid).delete()
+        .then(finishReset).catch(finishReset);
+    } else {
+      finishReset();
+    }
   }
 
   /* ============================= SCREEN 4: ITEM INFO ============================= */
