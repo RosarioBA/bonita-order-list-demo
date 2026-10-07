@@ -361,15 +361,16 @@
   .cell-input{
     width:100%;
     border:1px solid var(--border-strong);
-    background:var(--surface);
+    background:var(--accent);
+    color:var(--accent-contrast);
     border-radius:8px;
-    padding:5px 3px;
-    font-size:16px; /* iOS/Android zoom in on focus below 16px - this avoids that */
-    font-weight:600;
+    padding:7px 3px;
+    font-size:20px; /* iOS/Android zoom in on focus below 16px - this avoids that */
+    font-weight:800;
     text-align:center;
   }
-  .cell-input:focus{border-color:var(--accent);}
-  .cell-input.order{border-color:var(--accent); background:var(--surface-2);}
+  .cell-input:focus{border-color:var(--accent-ink);}
+  .cell-input.order{border-color:var(--accent-ink);}
 
   .onhand-picker{position:relative;}
   .onhand-trigger{cursor:pointer;}
