@@ -1558,14 +1558,22 @@
     // otherwise visibly drags the whole list up/down under you. Anchor to
     // whichever item row is currently topmost on screen before rebuilding
     // the DOM, then nudge the scroll position after so that same row
-    // stays exactly where it was -- nothing appears to move underneath you.
-    var anchorId = null, anchorTop = 0;
+    // stays exactly where it was. Also remember which supplier group that
+    // row belonged to: if the row itself just got folded away (the exact
+    // case that matters most -- finishing the *last* item in a section is
+    // what triggers the collapse), there's no "same pixel" position left
+    // to restore, so fall back to scrolling that section's header to the
+    // top instead of leaving the scroll wherever it happened to land.
+    var anchorId = null, anchorTop = 0, anchorSupplier = null;
     var rows = app.querySelectorAll("[data-item]");
     for(var i=0;i<rows.length;i++){
       var rect = rows[i].getBoundingClientRect();
       if(rect.bottom > 0){
         anchorId = rows[i].getAttribute("data-item");
         anchorTop = rect.top;
+        var grp = rows[i].closest(".supplier-group");
+        var head = grp && grp.querySelector(".supplier-head");
+        if(head) anchorSupplier = head.getAttribute("data-supplier");
         break;
       }
     }
@@ -1591,6 +1599,13 @@
       if(freshEl){
         var delta = freshEl.getBoundingClientRect().top - anchorTop;
         if(delta) window.scrollBy(0, delta);
+      } else if(anchorSupplier){
+        var freshHead = app.querySelector('.supplier-head[data-supplier="'+anchorSupplier+'"]');
+        if(freshHead){
+          var contentTopPx = parseFloat(app.style.getPropertyValue("--content-top")) || 0;
+          var headDelta = freshHead.getBoundingClientRect().top - contentTopPx;
+          if(headDelta) window.scrollBy(0, headDelta);
+        }
       }
     }
   }
