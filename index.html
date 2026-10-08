@@ -1671,7 +1671,7 @@
     var cards = STORES.map(function(s){
       return '<div class="choice-card" data-action="pick-store" data-store="'+s.id+'">'+
         '<div class="icon">'+s.icon+'</div>'+
-        '<div class="label">'+s.name+'</div>'+
+        '<div class="label">'+escHtml(s.name)+'</div>'+
         '<div class="sub">Wed &amp; Sun ordering</div>'+
       '</div>';
     }).join("");
@@ -1776,13 +1776,13 @@
 
   function renderNameSelect(){
     var rows = (STAFF[state.store] || []).map(function(n){
-      return '<div class="name-row" data-action="pick-name" data-name="'+n+'">'+
-        '<span>'+n+'</span><span class="chevron">›</span>'+
+      return '<div class="name-row" data-action="pick-name" data-name="'+escHtml(n)+'">'+
+        '<span>'+escHtml(n)+'</span><span class="chevron">›</span>'+
       '</div>';
     }).join("");
     var storeName = STORES.filter(function(s){return s.id===state.store;})[0].name;
     return (
-      '<div class="back-row" data-action="back-to-store">‹ '+storeName+'</div>'+
+      '<div class="back-row" data-action="back-to-store">‹ '+escHtml(storeName)+'</div>'+
       '<div class="centered-screen">'+
         '<div class="heading">'+
           '<h1>Who\'s filling this out?</h1>'+
@@ -2163,7 +2163,7 @@
     return (
       '<div class="app-header">'+
         '<div class="row1">'+
-          '<div class="identity"><span class="store">Item Catalog — '+filterStoreName+'</span><span class="staff">unit, box size &amp; par targets</span></div>'+
+          '<div class="identity"><span class="store">Item Catalog — '+escHtml(filterStoreName)+'</span><span class="staff">unit, box size &amp; par targets</span></div>'+
           '<div class="header-actions"><button class="icon-btn" data-action="close-item-info">✕</button></div>'+
         '</div>'+
         '<div class="search-row">'+
@@ -2173,7 +2173,7 @@
       '</div>'+
       '<div class="filter-tabs">'+
         STORES.map(function(s){
-          return '<button class="'+(filter===s.id?'active':'')+'" data-action="filter-catalog" data-filter="'+s.id+'">'+s.name+'</button>';
+          return '<button class="'+(filter===s.id?'active':'')+'" data-action="filter-catalog" data-filter="'+s.id+'">'+escHtml(s.name)+'</button>';
         }).join("")+
       '</div>'+
       '<div class="list-body" style="padding-bottom:40px;">'+groupsHtml+'</div>'+
