@@ -624,6 +624,11 @@
     border-radius:var(--radius-sm); padding:8px 8px; font-size:16px; font-weight:600;
     color:var(--text); font-family:inherit;
   }
+  .field-checkbox{
+    grid-column:1 / -1; display:flex; align-items:center; gap:6px;
+    font-size:.72rem; color:var(--text-muted); font-weight:600;
+  }
+  .field-checkbox input{width:auto;}
   .par-row{
     display:grid; grid-template-columns:1fr 1fr; gap:8px;
     border-top:1px dashed var(--border); padding-top:8px;
@@ -824,7 +829,7 @@
       // Dried Herbs
       { id:"cafe-dried-chives", store:"cafe", supplier:"Eugen", category:"Dried Herbs", name:"Dried chives", nameEs:"Cebollino seco", unit:"unit", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
       // Fresh Fruit
-      { id:"cafe-apples", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Apples", nameEs:"Manzanas", unit:"box", unitsPerBox:1, weightPerUnit:null, parWed:0.25, parSun:0.25 },
+      { id:"cafe-apples", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Apples", nameEs:"Manzanas", unit:"box", unitsPerBox:null, weightPerUnit:null, trackAsBoxFraction:true, parWed:0.25, parSun:0.25 },
       { id:"cafe-avocados", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Avocados", nameEs:"Aguacates", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:10, parSun:10 },
       { id:"cafe-bananas", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Bananas", nameEs:"Bananos", unit:"box", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
       { id:"cafe-fresh-blueberries", store:"cafe", supplier:"Eugen", category:"Fresh Fruit", name:"Fresh blueberries", nameEs:"Arándanos frescos", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:2, parSun:2 },
@@ -1478,12 +1483,14 @@
     entry.order = String(suggested);
   }
 
-  // An item tracked by eye as a fraction of a box (unitsPerBox:1 is the
-  // signal — see Apples) gets quarter-box quick-picks with friendly glyphs
-  // instead of raw decimals like "0.25", since nobody's actually counting
-  // individual apples to produce that number.
+  // An item tracked by eye as a fraction of a box (trackAsBoxFraction:true
+  // — see Apples) gets quarter-box quick-picks with friendly glyphs instead
+  // of raw decimals like "0.25", since nobody's actually counting individual
+  // apples to produce that number. Deliberately its own flag, separate from
+  // unitsPerBox, so editing the "Units / box" field for an unrelated item
+  // never silently flips its picker into fraction mode.
   function isBoxFractionItem(item){
-    return item.unitsPerBox === 1;
+    return item.trackAsBoxFraction === true;
   }
   var BOX_FRACTION_GLYPHS = { 0:"Empty", 0.25:"¼", 0.5:"½", 0.75:"¾", 1:"Full", 1.25:"1¼", 1.5:"1½", 1.75:"1¾", 2:"2" };
   function fmtBoxFraction(n){
@@ -1526,9 +1533,9 @@
     var remainder = order % m;
     if(Math.abs(remainder) < 1e-6 || Math.abs(remainder - m) < 1e-6) return null;
     var rounded = Math.ceil(order / m) * m;
-    // unitsPerBox:1 means the box itself is the unit (see isBoxFractionItem,
-    // e.g. Apples) -- "(box of 1)" doesn't mean anything there, so drop the
-    // qualifier and just say how many boxes.
+    // unitsPerBox:1 here just means one unit per box (a real catalog fact,
+    // unrelated to the fraction picker) -- "(box of 1)" doesn't add
+    // anything, so drop the qualifier and just say how many boxes.
     if(m === 1) return "Rounds up to " + fmt(rounded) + (rounded === 1 ? " box." : " boxes.");
     return "Rounds up to " + fmt(rounded) + " (box of " + m + ").";
   }
@@ -2197,6 +2204,7 @@
           '<div class="field"><label>Unit</label><input type="text" placeholder="—" value="'+escHtml(item.unit)+'" data-action="edit-unit" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Units / box</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.unitsPerBox==null?"":item.unitsPerBox)+'" data-action="edit-units-per-box" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Weight / unit (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.weightPerUnit==null?"":item.weightPerUnit)+'" data-action="edit-weight-per-unit" data-item="'+item.id+'"></div>'+
+          '<label class="field-checkbox"><input type="checkbox" data-action="toggle-box-fraction" data-item="'+item.id+'"'+(item.trackAsBoxFraction?' checked':'')+'> Track by box fraction (Empty/¼/½/¾/Full) instead of a count</label>'+
           '<div class="field"><label>Supplier</label><select data-action="edit-supplier" data-item="'+item.id+'">'+
             suppliersForStore(item.store).map(function(s){
               return '<option value="'+escHtml(s)+'"'+(s===item.supplier?' selected':'')+'>'+escHtml(s)+'</option>';
@@ -2849,6 +2857,13 @@
       // in-progress typing here to preserve focus for).
       item.supplier = el.value;
       saveCatalogFieldEdit(item.id, "supplier", item.supplier);
+      render();
+    }
+    else if(action === "toggle-box-fraction"){
+      // Changes which on-hand picker this item uses elsewhere in the app,
+      // so a full re-render (not just this screen) is needed.
+      item.trackAsBoxFraction = el.checked;
+      saveCatalogFieldEdit(item.id, "trackAsBoxFraction", item.trackAsBoxFraction);
       render();
     }
     else if(action === "edit-units-per-box" || action === "edit-weight-per-unit"){
