@@ -481,6 +481,19 @@
     border-radius:var(--radius-sm); padding:10px; font-size:.85rem; font-weight:700;
     color:var(--danger); cursor:pointer;
   }
+  .settings-row:has(.settings-input){border-bottom:none; padding:4px 0; gap:8px;}
+  .settings-input{
+    flex:1; min-width:0; border:1px solid var(--border-strong); background:var(--surface-2);
+    border-radius:var(--radius-sm); padding:8px 8px; font-size:16px; font-weight:600;
+    color:var(--text); font-family:inherit;
+  }
+  .settings-remove-btn{
+    background:none; border:1px solid var(--danger); border-radius:6px;
+    padding:5px 10px; font-size:.72rem; font-weight:700; color:var(--danger); cursor:pointer;
+  }
+  .settings-add.real{color:var(--accent-ink); cursor:pointer;}
+  .settings-substore{margin-bottom:10px;}
+  .settings-substore h4{font-size:.76rem; color:var(--text-muted); font-weight:700; margin-bottom:4px;}
   .settings-danger:active{background:var(--danger); color:var(--accent-contrast);}
 
   /* ---------- drag-to-reorder (Item Info) ---------- */
@@ -675,15 +688,23 @@
 
   /* ============================= DATA ============================= */
 
-  var STORES = [
-    { id:"cafe", name:"Café", icon:"☕" },
-    { id:"dlc",  name:"DLC (Restaurant)", icon:"🍽️" }
-  ];
-
-  var STAFF = {
-    cafe: ["Rosario", "Kim", "Daniel", "Greta", "Maria J", "Rahman"],
-    dlc: ["Yudi", "Yadira", "Jenny", "Rosada", "Santiago", "Zeljko"]
-  };
+  function defaultStores(){
+    return [
+      { id:"cafe", name:"Café", icon:"☕" },
+      { id:"dlc",  name:"DLC (Restaurant)", icon:"🍽️" }
+    ];
+  }
+  function defaultStaff(){
+    return {
+      cafe: ["Rosario", "Kim", "Daniel", "Greta", "Maria J", "Rahman"],
+      dlc: ["Yudi", "Yadira", "Jenny", "Rosada", "Santiago", "Zeljko"]
+    };
+  }
+  // Populated from saved config at boot (see loadConfig/boot) -- these two
+  // start as plain defaults so nothing breaks if boot() hasn't run yet,
+  // same spirit as `catalog` being rebuilt fresh from defaultCatalog().
+  var STORES = defaultStores();
+  var STAFF = defaultStaff();
 
   // The catalog is never saved as one big snapshot anymore -- it's always
   // rebuilt fresh from defaultCatalog() every load, with the user's own
@@ -694,6 +715,7 @@
   // is a frozen copy of the old default data.
   var CATALOG_OVERRIDES_KEY = "bonita_ol_catalog_overrides_v1"; // itemId -> { field: value }
   var CATALOG_ORDER_KEY = "bonita_ol_catalog_order_v1"; // "store|supplier" -> [itemId, ...]
+  var CONFIG_KEY = "bonita_ol_config_v1"; // { storeNames: {id: name}, staff: {id: [names]} }
   var SESSION_KEY_PREFIX = "bonita_ol_session_v1_";
   var SUBMISSIONS_KEY = "bonita_ol_submissions_v1";
   var APP_STATE_KEY = "bonita_ol_appstate_v1";
@@ -1196,6 +1218,7 @@
     var payload = {
       overrides: readJSON(CATALOG_OVERRIDES_KEY, {}),
       order: readJSON(CATALOG_ORDER_KEY, {}),
+      config: readJSON(CONFIG_KEY, {}),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     firebase.firestore().collection("shared_catalog").doc("current").set(payload).catch(function(){});
@@ -1228,6 +1251,7 @@
           var data = sharedDoc.data();
           if(data.overrides) localStorage.setItem(CATALOG_OVERRIDES_KEY, JSON.stringify(data.overrides));
           if(data.order) localStorage.setItem(CATALOG_ORDER_KEY, JSON.stringify(data.order));
+          if(data.config) localStorage.setItem(CONFIG_KEY, JSON.stringify(data.config));
         }
         cloudReady = true;
         setCloudStatus("synced");
@@ -1302,6 +1326,33 @@
   function resetCatalogEdits(){
     writeJSON(CATALOG_OVERRIDES_KEY, {});
     writeJSON(CATALOG_ORDER_KEY, {});
+    scheduleCatalogSync();
+  }
+
+  // Locations (rename only -- a whole new store would have no catalog
+  // items and nowhere to get them from) and Staff (full add/rename/
+  // remove, per store) are real config now, not just the Settings
+  // concept-preview mockup. Same shape as the catalog: always rebuilt
+  // from the hardcoded defaults with a saved override layered on top, so
+  // a future code change to the defaults still reaches everyone.
+  function loadConfig(){
+    var saved = readJSON(CONFIG_KEY, {});
+    var stores = defaultStores().map(function(s){
+      var overrideName = saved.storeNames && saved.storeNames[s.id];
+      return { id:s.id, icon:s.icon, name: overrideName || s.name };
+    });
+    var defStaff = defaultStaff();
+    var staff = {};
+    stores.forEach(function(s){
+      staff[s.id] = (saved.staff && saved.staff[s.id]) || defStaff[s.id] || [];
+    });
+    return { stores: stores, staff: staff };
+  }
+
+  function saveConfig(cfg){
+    var storeNames = {};
+    cfg.stores.forEach(function(s){ storeNames[s.id] = s.name; });
+    writeJSON(CONFIG_KEY, { storeNames: storeNames, staff: cfg.staff });
     scheduleCatalogSync();
   }
 
@@ -1626,9 +1677,9 @@
   // cycles/suppliers/locations/staff being fixed in the code as they are
   // today for Bonita specifically.
   function renderSettingsPreview(){
-    function section(title, hint, items, addLabel){
+    function staticSection(title, hint, items, addLabel){
       var rows = items.map(function(i){
-        return '<div class="settings-row"><span>'+i+'</span><button class="settings-row-btn" disabled>Edit</button></div>';
+        return '<div class="settings-row"><span>'+escHtml(i)+'</span><button class="settings-row-btn" disabled>Edit</button></div>';
       }).join("");
       return (
         '<div class="settings-section">'+
@@ -1642,25 +1693,60 @@
     var allSuppliers = [];
     catalog.forEach(function(i){ if(allSuppliers.indexOf(i.supplier)===-1) allSuppliers.push(i.supplier); });
 
+    // Locations: rename only. Adding a whole new location isn't offered --
+    // it would arrive with zero catalog items and no way to add any yet,
+    // so it wouldn't actually be usable.
+    var locationsSection = (
+      '<div class="settings-section">'+
+        '<h3>Locations</h3>'+
+        '<p class="settings-hint">The store(s) staff pick from at the start. Renaming is real; adding a '+
+          'whole new location isn\'t supported yet — it would need its own item catalog too.</p>'+
+        STORES.map(function(s){
+          return '<div class="settings-row">'+
+            '<input type="text" class="settings-input" value="'+escHtml(s.name)+'" data-action="edit-store-name" data-store="'+s.id+'">'+
+          '</div>';
+        }).join("")+
+      '</div>'
+    );
+
+    // Staff: full add/rename/remove, per store.
+    var staffSection = (
+      '<div class="settings-section">'+
+        '<h3>Staff</h3>'+
+        '<p class="settings-hint">Names shown on the name-select screen — per location, since different '+
+          'people fill out each one.</p>'+
+        STORES.map(function(s){
+          var names = STAFF[s.id] || [];
+          var rows = names.map(function(name, idx){
+            return '<div class="settings-row">'+
+              '<input type="text" class="settings-input" value="'+escHtml(name)+'" data-action="edit-staff-name" data-store="'+s.id+'" data-index="'+idx+'">'+
+              '<button class="settings-remove-btn" data-action="remove-staff" data-store="'+s.id+'" data-index="'+idx+'">Remove</button>'+
+            '</div>';
+          }).join("");
+          return '<div class="settings-substore"><h4>'+escHtml(s.name)+'</h4>'+rows+
+            '<button class="settings-add real" data-action="add-staff" data-store="'+s.id+'">+ Add a staff member</button>'+
+          '</div>';
+        }).join("")+
+      '</div>'
+    );
+
     return (
       '<div class="back-row" data-action="close-settings">‹ Back</div>'+
       '<div class="settings-page">'+
         '<div class="settings-banner">'+
-          '<b>Concept preview</b> — none of this is editable yet. This is what letting each business '+
-          'configure their own setup could look like, instead of everything below being fixed in the '+
-          'code for Bonita specifically.'+
+          '<b>Concept preview</b> — Order cycles and Providers below aren\'t editable yet (par values and '+
+          'the supplier list are wired more deeply into the catalog than a quick settings screen can change). '+
+          'Locations and Staff, further down, are real.'+
         '</div>'+
         '<h1 class="settings-title">Settings</h1>'+
-        section("Order cycles", "How often this business orders, and what to call each cycle.", ["Wed", "Sun"], "Add a cycle")+
-        section("Locations", "The store(s) staff pick from at the start.", STORES.map(function(s){return s.name;}), "Add a location")+
-        section("Providers", "Every supplier currently used across the catalog.", allSuppliers, "Add a provider")+
-        section("Staff", "Names shown on the name-select screen — per location, since different people fill out each one.", STORES.reduce(function(acc, s){
-          return acc.concat((STAFF[s.id] || []).map(function(n){ return n + " (" + s.name + ")"; }));
-        }, []), "Add a staff member")+
+        staticSection("Order cycles", "How often this business orders, and what to call each cycle.", ["Wed", "Sun"], "Add a cycle")+
+        locationsSection+
+        staticSection("Providers", "Every supplier currently used across the catalog.", allSuppliers, "Add a provider")+
+        staffSection+
         '<div class="settings-section">'+
           '<h3>Reset this device</h3>'+
-          '<p class="settings-hint">This one is real, not part of the concept preview above — useful while '+
-            'testing. Clears every in-progress list, submission, and catalog edit saved in this browser.</p>'+
+          '<p class="settings-hint">Clears every in-progress list, submission, and catalog edit saved in '+
+            'this browser.</p>'+
           '<button class="settings-danger" data-action="request-reset">🗑 Reset everything on this device</button>'+
         '</div>'+
       '</div>'+
@@ -2567,6 +2653,23 @@
       state.reorderSection = null;
       render();
     }
+    else if(action === "add-staff"){
+      var addStore = el.getAttribute("data-store");
+      if(!STAFF[addStore]) STAFF[addStore] = [];
+      STAFF[addStore].push("New staff member");
+      saveConfig({ stores: STORES, staff: STAFF });
+      render();
+      var newIdx = STAFF[addStore].length - 1;
+      var freshNew = app.querySelector('[data-action="edit-staff-name"][data-store="'+addStore+'"][data-index="'+newIdx+'"]');
+      if(freshNew){ freshNew.focus(); freshNew.select(); }
+    }
+    else if(action === "remove-staff"){
+      var rmStore = el.getAttribute("data-store");
+      var rmIdx = parseInt(el.getAttribute("data-index"), 10);
+      if(STAFF[rmStore]) STAFF[rmStore].splice(rmIdx, 1);
+      saveConfig({ stores: STORES, staff: STAFF });
+      render();
+    }
     else if(action === "request-reset"){
       state.confirmResetOpen = true;
       render();
@@ -2662,6 +2765,33 @@
         freshName.focus();
         var posN = namePos == null ? freshName.value.length : Math.min(namePos, freshName.value.length);
         try{ freshName.setSelectionRange(posN, posN); }catch(err){}
+      }
+      return;
+    }
+
+    if(action === "edit-store-name" || action === "edit-staff-name"){
+      // Renaming a store also needs to live-update its heading in the
+      // Staff section further down this same screen, so this is a full
+      // render too, with the same cursor-position preservation.
+      var cfgStore = el.getAttribute("data-store");
+      var cfgIndexAttr = el.getAttribute("data-index");
+      if(action === "edit-store-name"){
+        var storeObj = STORES.filter(function(s){return s.id===cfgStore;})[0];
+        if(storeObj) storeObj.name = el.value;
+      } else {
+        var staffIdx = parseInt(cfgIndexAttr, 10);
+        if(STAFF[cfgStore]) STAFF[cfgStore][staffIdx] = el.value;
+      }
+      saveConfig({ stores: STORES, staff: STAFF });
+      var cfgPos = null;
+      try{ cfgPos = el.selectionStart; }catch(err){}
+      render();
+      var cfgSelector = '[data-action="'+action+'"][data-store="'+cfgStore+'"]'+(cfgIndexAttr!=null ? '[data-index="'+cfgIndexAttr+'"]' : '');
+      var freshCfg = app.querySelector(cfgSelector);
+      if(freshCfg){
+        freshCfg.focus();
+        var posCfg = cfgPos == null ? freshCfg.value.length : Math.min(cfgPos, freshCfg.value.length);
+        try{ freshCfg.setSelectionRange(posCfg, posCfg); }catch(err){}
       }
       return;
     }
@@ -2879,6 +3009,9 @@
   // restored into localStorage, so loadCatalog()/restoreAppState() always
   // see the right data regardless of which device this is.
   function boot(){
+    var cfg = loadConfig();
+    STORES = cfg.stores;
+    STAFF = cfg.staff;
     catalog = loadCatalog();
     restoreAppState();
     render();
