@@ -625,10 +625,11 @@
     color:var(--text); font-family:inherit;
   }
   .field-checkbox{
-    grid-column:1 / -1; display:flex; align-items:center; gap:6px;
-    font-size:.72rem; color:var(--text-muted); font-weight:600;
+    grid-column:1 / -1; display:flex; align-items:center; gap:7px;
+    font-size:.68rem; color:var(--text-muted); font-weight:600;
+    padding:4px 0; cursor:pointer;
   }
-  .field-checkbox input{width:auto;}
+  .field-checkbox input{width:17px; height:17px; flex-shrink:0; margin:0;}
   .par-row{
     display:grid; grid-template-columns:1fr 1fr; gap:8px;
     border-top:1px dashed var(--border); padding-top:8px;
@@ -2204,7 +2205,7 @@
           '<div class="field"><label>Unit</label><input type="text" placeholder="—" value="'+escHtml(item.unit)+'" data-action="edit-unit" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Units / box</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.unitsPerBox==null?"":item.unitsPerBox)+'" data-action="edit-units-per-box" data-item="'+item.id+'"></div>'+
           '<div class="field"><label>Weight / unit (g)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="—" value="'+(item.weightPerUnit==null?"":item.weightPerUnit)+'" data-action="edit-weight-per-unit" data-item="'+item.id+'"></div>'+
-          '<label class="field-checkbox"><input type="checkbox" data-action="toggle-box-fraction" data-item="'+item.id+'"'+(item.trackAsBoxFraction?' checked':'')+'> Track by box fraction (Empty/¼/½/¾/Full) instead of a count</label>'+
+          '<label class="field-checkbox"><input type="checkbox" data-action="toggle-box-fraction" data-item="'+item.id+'"'+(item.trackAsBoxFraction?' checked':'')+'> Track by box fraction</label>'+
           '<div class="field"><label>Supplier</label><select data-action="edit-supplier" data-item="'+item.id+'">'+
             suppliersForStore(item.store).map(function(s){
               return '<option value="'+escHtml(s)+'"'+(s===item.supplier?' selected':'')+'>'+escHtml(s)+'</option>';
