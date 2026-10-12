@@ -362,6 +362,10 @@
   .name-es-line{font-size:.82rem; color:var(--text); font-weight:600; margin-top:1px; line-height:1.25;}
 
   .cell-wrap{position:relative;}
+  .cell-unit{
+    display:block; text-align:center; font-size:.56rem; line-height:1.15;
+    color:var(--text-muted); margin-top:2px; word-break:break-word;
+  }
   .cell-input{
     width:100%;
     border:1px solid var(--border-strong);
@@ -947,7 +951,7 @@
       { id:"dlc-leche-de-avena", store:"dlc", supplier:"Asko", category:"Bar: Milks", name:"Oat Milk", nameEs:"leche de avena", unit:"units (x6)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
       { id:"dlc-clorin-botella-caja", store:"dlc", supplier:"Asko", name:"Bleach", nameEs:"Clorin botella caja", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
       { id:"dlc-entrecote-ribbeye", store:"dlc", supplier:"Asko", name:"Ribeye Entrecôte", nameEs:"Entrecote ribbeye", unit:"units (2kg)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
-      { id:"dlc-almendras", store:"dlc", supplier:"Asko", name:"Almonds", nameEs:"Almendras", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
+      { id:"dlc-almendras", store:"dlc", supplier:"Asko", name:"Almonds", nameEs:"Almendras", unit:"bags", unitsPerBox:14, weightPerUnit:null, parWed:1, parSun:1 },
       { id:"dlc-jabon-maquina-a7", store:"dlc", supplier:"Asko", name:"Dishwasher Soap (A7)", nameEs:"Jabon maquina A7", unit:"units (x3)", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
       { id:"dlc-entrecote-m-rbrad", store:"dlc", supplier:"Asko", name:"Tenderloin Entrecôte", nameEs:"Entrecote mørbrad", unit:"units", unitsPerBox:null, weightPerUnit:null, parWed:6, parSun:6 },
       { id:"dlc-walnuts-box", store:"dlc", supplier:"Asko", name:"Walnuts", nameEs:"Walnuts box", unit:"boxes", unitsPerBox:null, weightPerUnit:null, parWed:1, parSun:1 },
@@ -1468,6 +1472,16 @@
   function fmt(n){
     return Number(n||0).toLocaleString("pt-PT", { maximumFractionDigits: 1 });
   }
+  // Short label shown right on the Have/Order boxes so no one has to guess
+  // whether the number they're typing means units or boxes. Drops any
+  // parenthetical supplier-pack detail ("units (x10)" -> "units") since
+  // that's too long for the narrow cell -- the full string is still shown
+  // in the Par line and Item Catalog.
+  function primaryUnitWord(unit){
+    var u = String(unit || "").trim();
+    var m = u.match(/^([^\s(]+)/);
+    return m ? m[1] : u;
+  }
   function itemsForStore(store){ return catalog.filter(function(i){ return i.store === store; }); }
   function parFor(item, cycle){ return cycle === "wed" ? item.parWed : item.parSun; }
   function cycleLabel(cycle){ return cycle === "wed" ? "Wed" : "Sun"; }
@@ -1543,7 +1557,10 @@
 
   // Single rounding rule: if unitsPerBox is set and Order isn't a multiple
   // of it, it always rounds UP to the nearest multiple. Purely informational
-  // — never blocks submission.
+  // — never blocks submission. Spells out the same box conversion printQty()
+  // uses for the actual supplier order ("5 units -> 1 box of 14"), so what's
+  // shown here while filling the list always matches what ends up on the
+  // printed/shared order, not just a bare number with no unit-vs-box cue.
   function packNote(item, entry){
     if(!item.unitsPerBox) return null;
     var order = parseFloat(entry.order);
@@ -1551,12 +1568,8 @@
     var m = item.unitsPerBox;
     var remainder = order % m;
     if(Math.abs(remainder) < 1e-6 || Math.abs(remainder - m) < 1e-6) return null;
-    var rounded = Math.ceil(order / m) * m;
-    // unitsPerBox:1 here just means one unit per box (a real catalog fact,
-    // unrelated to the fraction picker) -- "(box of 1)" doesn't add
-    // anything, so drop the qualifier and just say how many boxes.
-    if(m === 1) return "Rounds up to " + fmt(rounded) + (rounded === 1 ? " box." : " boxes.");
-    return "Rounds up to " + fmt(rounded) + " (box of " + m + ").";
+    var boxes = Math.ceil(order / m - 1e-9);
+    return fmt(order) + " " + item.unit + " → " + boxes + (boxes === 1 ? " box" : " boxes") + " of " + m + " each.";
   }
 
   // Live weight reference — only meaningful (and only shown) when the item
@@ -2034,10 +2047,11 @@
               (item.category ? ' <span class="row-category">· '+escHtml(item.category)+'</span>' : '')+
             '</div>'+
           '</div>'+
-          '<div class="cell-wrap">'+renderOnHandCell(item, entry)+'</div>'+
+          '<div class="cell-wrap">'+renderOnHandCell(item, entry)+'<span class="cell-unit">'+escHtml(primaryUnitWord(item.unit))+'</span></div>'+
           '<div class="cell-wrap"><input class="cell-input order" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="0" '+
             'value="'+escHtml(entry.order)+'" data-action="input-order" data-item="'+item.id+'">'+
             (entry.manualOrder ? '<span class="manual-dot" title="manually entered"></span>' : '')+
+            '<span class="cell-unit">'+escHtml(primaryUnitWord(item.unit))+'</span>'+
           '</div>'+
           '<button class="skip-btn '+(entry.skipped?'active':'')+'" data-action="toggle-skip" data-item="'+item.id+'">'+
             (entry.skipped ? "↺" : "Skip")+
