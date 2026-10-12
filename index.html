@@ -666,6 +666,12 @@
     display:flex; align-items:center; justify-content:center; font-size:1.8rem;
   }
   .success-screen p{color:var(--text-muted); font-size:.9rem; max-width:36ch;}
+  .success-screen .spinner{
+    width:48px; height:48px; border-radius:50%;
+    border:4px solid var(--border); border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
   .history-status{font-size:.8rem; margin:-6px 0 0;}
   .history-status.ok{color:var(--success);}
   .history-status.error{color:var(--danger);}
@@ -1418,7 +1424,15 @@
 
   function restoreAppState(){
     var saved = loadAppState();
-    if(saved && saved.store && (saved.screen === "order" || saved.screen === "item-info")){
+    if(!saved) return;
+    // "history" doesn't need a store/staffName to make sense of (it's not
+    // scoped to one), unlike order/item-info which need the chosen store
+    // restored alongside the screen.
+    if(saved.screen === "history"){
+      state.screen = "history";
+      return;
+    }
+    if(saved.store && (saved.screen === "order" || saved.screen === "item-info")){
       state.store = saved.store;
       state.staffName = saved.staffName || null;
       state.cycle = saved.cycle || nearestCycle();
@@ -1591,6 +1605,7 @@
     else if(state.screen === "name") html = renderNameSelect();
     else if(state.screen === "order") html = renderOrderList();
     else if(state.screen === "item-info") html = renderItemInfo();
+    else if(state.screen === "submitting") html = renderSubmitting();
     else if(state.screen === "success") html = renderSuccess();
     else if(state.screen === "print") html = renderPrintView();
     else if(state.screen === "history"){
@@ -2217,6 +2232,19 @@
           '<div class="field"><label>Par (Sun)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" value="'+item.parSun+'" data-action="edit-par-sun" data-item="'+item.id+'"></div>'+
         '</div>'+
         '<div class="box-weight" data-role="box-weight">'+(bw==null ? "Box weight: —" : "Box weight: "+fmt(bw)+" g")+'</div>'+
+      '</div>'
+    );
+  }
+
+  /* ============================= SUBMITTING SCREEN ============================= */
+
+  // Shown while pushSharedSubmission() is still settling -- see submitList().
+  function renderSubmitting(){
+    return (
+      '<div class="success-screen">'+
+        '<div class="spinner"></div>'+
+        '<h2>Saving your list…</h2>'+
+        '<p>Hang on, making sure it\'s added to the shared history too.</p>'+
       '</div>'
     );
   }
@@ -3000,40 +3028,87 @@
     var submissions = readJSON(SUBMISSIONS_KEY, []);
     submissions.push(record);
     writeJSON(SUBMISSIONS_KEY, submissions);
-    state.historyWriteStatus = "pending";
-    pushSharedSubmission(record);
 
     clearSession(state.store, state.cycle);
     state.confirmSubmitOpen = false;
     state.lastSubmission = record;
-    go("success");
+    state.historyWriteStatus = "pending";
+    // Stay on a "Saving…" screen until the shared write actually settles
+    // (success, failure, or gives up) instead of declaring success right
+    // away -- a fire-and-forget write here previously meant "List saved"
+    // could show even when the shared-history copy silently never landed
+    // (e.g. the page got backgrounded/suspended on a phone right after
+    // submitting, which iOS Safari does readily).
+    go("submitting");
+    pushSharedSubmission(record, function(){
+      go("success");
+    });
+  }
+
+  // Waits (bounded) for anonymous auth to be ready before attempting the
+  // shared write. The broader cloudReady flag also waits on two Firestore
+  // reads during boot and has its own 4s give-up timer there -- cloudUid
+  // alone is the real precondition for this write, and submitting can
+  // happen before that whole boot chain finishes.
+  function waitForCloudAuth(timeoutMs, cb){
+    if(cloudUid){ cb(true); return; }
+    var waited = 0;
+    var interval = setInterval(function(){
+      waited += 150;
+      if(cloudUid){ clearInterval(interval); cb(true); }
+      else if(waited >= timeoutMs){ clearInterval(interval); cb(false); }
+    }, 150);
   }
 
   // Mirrors a submission into a shared Firestore collection everyone can
   // read, separate from the per-device backup doc in writeJSON/pushToCloud.
-  // Updates state.historyWriteStatus so the success screen can show whether
-  // it actually worked, instead of failing silently with no visible trace.
-  function pushSharedSubmission(record){
-    if(!isFirebaseConfigured() || !cloudReady){
+  // Updates state.historyWriteStatus and always calls done() exactly once,
+  // bounded in time either way, so the caller can wait for a real outcome
+  // instead of assuming success.
+  function pushSharedSubmission(record, done){
+    done = done || function(){};
+    if(!isFirebaseConfigured()){
       state.historyWriteStatus = "unavailable";
+      done();
       return;
     }
-    try{
-      firebase.firestore().collection("shared_submissions").add(Object.assign({}, record, {
-        submittedAt: firebase.firestore.FieldValue.serverTimestamp()
-      })).then(function(){
-        state.historyWriteStatus = "ok";
-        render();
-      }).catch(function(err){
-        state.historyWriteStatus = "error";
-        state.historyWriteError = (err && (err.code || err.message)) || "unknown error";
-        render();
-      });
-    }catch(e){
-      state.historyWriteStatus = "error";
-      state.historyWriteError = (e && e.message) || "unknown error";
-      render();
+    var settled = false;
+    function finish(){
+      if(settled) return;
+      settled = true;
+      done();
     }
+    waitForCloudAuth(8000, function(authReady){
+      if(settled) return;
+      if(!authReady){
+        state.historyWriteStatus = "unavailable";
+        finish();
+        return;
+      }
+      var writeTimer = setTimeout(function(){
+        state.historyWriteStatus = "unavailable";
+        finish();
+      }, 6000);
+      try{
+        firebase.firestore().collection("shared_submissions").add(Object.assign({}, record, {
+          submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+        })).then(function(){
+          clearTimeout(writeTimer);
+          state.historyWriteStatus = "ok";
+          finish();
+        }).catch(function(err){
+          clearTimeout(writeTimer);
+          state.historyWriteStatus = "error";
+          state.historyWriteError = (err && (err.code || err.message)) || "unknown error";
+          finish();
+        });
+      }catch(e){
+        clearTimeout(writeTimer);
+        state.historyWriteStatus = "error";
+        state.historyWriteError = (e && e.message) || "unknown error";
+        finish();
+      }
+    });
   }
 
   /* ============================= INIT ============================= */
