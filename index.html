@@ -1436,6 +1436,11 @@
       state.staffName = saved.staffName || null;
       state.cycle = saved.cycle || nearestCycle();
       state.screen = saved.screen;
+      // Item Catalog has its own "which store's items am I viewing" state,
+      // independent of the active order-list store (you can browse the
+      // other store's catalog mid-session via its filter tabs) -- fall
+      // back to the order-list store only if that was never recorded.
+      if(saved.screen === "item-info") state.itemInfoFilter = saved.itemInfoFilter || saved.store;
     }
   }
 
@@ -1448,7 +1453,7 @@
   }
 
   function persistAppState(){
-    saveAppState({ screen: state.screen, store: state.store, staffName: state.staffName, cycle: state.cycle });
+    saveAppState({ screen: state.screen, store: state.store, staffName: state.staffName, cycle: state.cycle, itemInfoFilter: state.itemInfoFilter });
   }
 
   function go(screen){
@@ -2613,6 +2618,7 @@
     else if(action === "close-item-info"){ go("order"); }
     else if(action === "filter-catalog"){
       state.itemInfoFilter = el.getAttribute("data-filter");
+      persistAppState();
       render();
     }
     else if(action === "clear-search"){
