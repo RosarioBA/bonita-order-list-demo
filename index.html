@@ -701,7 +701,7 @@
   .history-status.ok{color:var(--success);}
   .history-status.error{color:var(--danger);}
 
-  .footer-links{display:flex; justify-content:center; padding:10px 0 22px;}
+  .footer-links{display:flex; justify-content:center; gap:16px; padding:10px 0 22px;}
 
   .cloud-status-badge{
     position:fixed; bottom:8px; right:8px; z-index:50;
@@ -762,6 +762,7 @@
   var CATALOG_OVERRIDES_KEY = "bonita_ol_catalog_overrides_v1"; // itemId -> { field: value }
   var CATALOG_ORDER_KEY = "bonita_ol_catalog_order_v1"; // "store|supplier" -> [itemId, ...]
   var CATALOG_DELETED_KEY = "bonita_ol_catalog_deleted_v1"; // [itemId, ...] -- manually deleted from Item Catalog
+  var CATALOG_ADDED_KEY = "bonita_ol_catalog_added_v1"; // [itemObject, ...] -- manually added from Item Catalog
   var CONFIG_KEY = "bonita_ol_config_v1"; // { storeNames: {id: name}, staff: {id: [names]} }
   var SESSION_KEY_PREFIX = "bonita_ol_session_v1_";
   var SUBMISSIONS_KEY = "bonita_ol_submissions_v1";
@@ -1268,6 +1269,7 @@
       overrides: readJSON(CATALOG_OVERRIDES_KEY, {}),
       order: readJSON(CATALOG_ORDER_KEY, {}),
       deleted: readJSON(CATALOG_DELETED_KEY, []),
+      added: readJSON(CATALOG_ADDED_KEY, []),
       config: readJSON(CONFIG_KEY, {}),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -1302,6 +1304,7 @@
           if(data.overrides) localStorage.setItem(CATALOG_OVERRIDES_KEY, JSON.stringify(data.overrides));
           if(data.order) localStorage.setItem(CATALOG_ORDER_KEY, JSON.stringify(data.order));
           if(data.deleted) localStorage.setItem(CATALOG_DELETED_KEY, JSON.stringify(data.deleted));
+          if(data.added) localStorage.setItem(CATALOG_ADDED_KEY, JSON.stringify(data.added));
           if(data.config) localStorage.setItem(CONFIG_KEY, JSON.stringify(data.config));
         }
         cloudReady = true;
@@ -1320,6 +1323,13 @@
     var cat = defaultCatalog();
     var deletedIds = readJSON(CATALOG_DELETED_KEY, []);
     if(deletedIds.length) cat = cat.filter(function(item){ return deletedIds.indexOf(item.id) === -1; });
+    // Manually-added items merge in here too, before overrides/order are
+    // applied, so they're just as editable/reorderable as a default item.
+    var added = readJSON(CATALOG_ADDED_KEY, []);
+    if(added.length){
+      var addedLive = deletedIds.length ? added.filter(function(item){ return deletedIds.indexOf(item.id) === -1; }) : added;
+      cat = cat.concat(addedLive);
+    }
     var overrides = readJSON(CATALOG_OVERRIDES_KEY, {});
     var order = readJSON(CATALOG_ORDER_KEY, {});
 
@@ -1386,10 +1396,26 @@
     scheduleCatalogSync();
   }
 
+  // Simple slug + timestamp -- unique enough without needing to check
+  // against existing ids, and stable once created (edits/reorders/deletes
+  // all key off this id same as any default item).
+  function generateItemId(store, name){
+    var slug = String(name || "item").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+    return "custom-" + store + "-" + slug + "-" + Date.now().toString(36);
+  }
+
+  function addCatalogItem(item){
+    var added = readJSON(CATALOG_ADDED_KEY, []);
+    added.push(item);
+    writeJSON(CATALOG_ADDED_KEY, added);
+    scheduleCatalogSync();
+  }
+
   function resetCatalogEdits(){
     writeJSON(CATALOG_OVERRIDES_KEY, {});
     writeJSON(CATALOG_ORDER_KEY, {});
     writeJSON(CATALOG_DELETED_KEY, []);
+    writeJSON(CATALOG_ADDED_KEY, []);
     scheduleCatalogSync();
   }
 
@@ -1464,6 +1490,7 @@
     confirmSubmitOpen: false,
     confirmResetOpen: false,
     confirmDeleteItem: null, // itemId pending delete confirmation on Item Catalog, or null
+    addItemOpen: false, // whether the "Add item" sheet is open on Item Catalog
     reorderSupplier: null, // supplier name currently in drag-to-reorder mode on Item Info, or null
     reorderSection: null, // "food" | "bar" -- which half of that supplier is being reordered
     historyItems: undefined, // undefined = not fetched yet, null = loading, array = loaded (shared across everyone)
@@ -2333,8 +2360,12 @@
         }).join("")+
       '</div>'+
       '<div class="list-body" style="padding-bottom:40px;">'+groupsHtml+'</div>'+
-      '<div class="footer-links"><button class="link-btn" data-action="reset-catalog">Reset catalog to defaults</button></div>'+
-      (state.confirmDeleteItem ? renderDeleteItemSheet(state.confirmDeleteItem) : "")
+      '<div class="footer-links">'+
+        '<button class="link-btn" data-action="request-add-item">+ Add item</button>'+
+        '<button class="link-btn" data-action="reset-catalog">Reset catalog to defaults</button>'+
+      '</div>'+
+      (state.confirmDeleteItem ? renderDeleteItemSheet(state.confirmDeleteItem) : "")+
+      (state.addItemOpen ? renderAddItemSheet(filter) : "")
     );
   }
 
@@ -2382,6 +2413,34 @@
           '<div class="sheet-actions">'+
             '<button class="btn-ghost" data-action="cancel-delete-item">Cancel</button>'+
             '<button class="btn-primary" style="background:var(--danger); border-color:var(--danger)" data-action="confirm-delete-item" data-item="'+item.id+'">Delete</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    );
+  }
+
+  // Par defaults to 0/0 (placeholder:true, like a source-sheet gap) --
+  // everything else about the item is filled in afterward via the normal
+  // field edits, same screen, no separate "finish setting it up" step.
+  function renderAddItemSheet(store){
+    var suppliers = suppliersForStore(store);
+    return (
+      '<div class="overlay" data-action="cancel-add-item">'+
+        '<div class="sheet" data-action="noop">'+
+          '<h3>Add an item</h3>'+
+          '<div class="catalog-fields" style="margin-bottom:4px">'+
+            '<div class="field"><label>Name</label><input type="text" data-role="add-item-name" placeholder="e.g. Paper Towels"></div>'+
+            '<div class="field"><label>Name (ES)</label><input type="text" data-role="add-item-name-es" placeholder="—"></div>'+
+            '<div class="field"><label>Unit</label><input type="text" data-role="add-item-unit" value="units"></div>'+
+            '<div class="field"><label>Supplier</label><select data-role="add-item-supplier">'+
+              suppliers.map(function(s){ return '<option value="'+escHtml(s)+'">'+escHtml(s)+'</option>'; }).join("")+
+            '</select></div>'+
+          '</div>'+
+          '<label class="field-checkbox"><input type="checkbox" data-role="add-item-isbar"> This is a Bar item</label>'+
+          '<p class="settings-hint">Par starts at 0 for both cycles — set the real numbers after adding, same as any other item.</p>'+
+          '<div class="sheet-actions">'+
+            '<button class="btn-ghost" data-action="cancel-add-item">Cancel</button>'+
+            '<button class="btn-primary" data-action="confirm-add-item" data-store="'+store+'">Add item</button>'+
           '</div>'+
         '</div>'+
       '</div>'
@@ -2841,6 +2900,40 @@
     else if(action === "confirm-delete-item"){
       deleteCatalogItem(el.getAttribute("data-item"));
       state.confirmDeleteItem = null;
+      catalog = loadCatalog();
+      render();
+    }
+    else if(action === "request-add-item"){
+      state.addItemOpen = true;
+      render();
+    }
+    else if(action === "cancel-add-item"){
+      state.addItemOpen = false;
+      render();
+    }
+    else if(action === "confirm-add-item"){
+      var newStore = el.getAttribute("data-store");
+      var nameVal = (app.querySelector('[data-role="add-item-name"]').value || "").trim();
+      if(!nameVal) return; // name is the one required field
+      var nameEsVal = (app.querySelector('[data-role="add-item-name-es"]').value || "").trim();
+      var unitVal = (app.querySelector('[data-role="add-item-unit"]').value || "").trim() || "units";
+      var supplierVal = app.querySelector('[data-role="add-item-supplier"]').value;
+      var isBarVal = app.querySelector('[data-role="add-item-isbar"]').checked;
+      addCatalogItem({
+        id: generateItemId(newStore, nameVal),
+        store: newStore,
+        supplier: supplierVal,
+        category: isBarVal ? "Bar" : undefined,
+        name: nameVal,
+        nameEs: nameEsVal || null,
+        unit: unitVal,
+        unitsPerBox: null,
+        weightPerUnit: null,
+        parWed: 0,
+        parSun: 0,
+        placeholder: true
+      });
+      state.addItemOpen = false;
       catalog = loadCatalog();
       render();
     }
