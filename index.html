@@ -258,6 +258,12 @@
   .progress-line{display:flex; align-items:center; gap:8px; font-size:.78rem; color:var(--text-muted);}
   .progress-bar{flex:1; height:5px; border-radius:999px; background:var(--surface-3); overflow:hidden;}
   .progress-bar > i{display:block; height:100%; background:var(--success); border-radius:999px; transition:width .25s ease;}
+  .unreviewed-toggle{
+    align-self:flex-start; margin-top:2px;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text-muted);
+    border-radius:999px; padding:6px 12px; font-size:.78rem; font-weight:600; cursor:pointer;
+  }
+  .unreviewed-toggle.active{background:var(--accent); color:var(--accent-contrast); border-color:var(--accent);}
 
   .search-row{position:relative; display:flex;}
   .search-input{
@@ -1432,6 +1438,7 @@
     historyWriteStatus: null, // null | "pending" | "ok" | "error" | "unavailable" -- shown on the success screen
     historyWriteError: null, // actual Firestore error code/message, shown alongside historyWriteStatus "error"
     searchQuery: "",
+    showOnlyUnreviewed: false, // toggle on the order screen -- see renderOrderList()
     itemInfoSearch: "",
     expandedInfo: {}, // itemId -> true, which rows have their info panel open (transient, not persisted)
     customOnHand: {}, // itemId -> true, rows switched from the quick-pick dropdown to free typing
@@ -1932,12 +1939,16 @@
     // Search filters which rows render, but progress/session/submit always
     // reason about the full item list, not just what's currently visible.
     var visibleItems = items.filter(function(i){ return matchesSearch(i, state.searchQuery); });
+    if(state.showOnlyUnreviewed) visibleItems = visibleItems.filter(function(i){ return !isTouched(entryFor(session,i)); });
     var groups = groupBySupplier(visibleItems);
     var groupsHtml = groups.map(function(g){
       var allItems = g.items.concat(g.barItems);
       var remaining = allItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
-      // Search always shows full results, regardless of collapse state.
-      var collapsed = state.searchQuery ? false : supplierCollapsed(session, g.supplier, remaining);
+      // Search and the "only unreviewed" filter both always show full
+      // results, regardless of collapse state -- otherwise a manually or
+      // auto-collapsed group would hide exactly the items someone's trying
+      // to surface.
+      var collapsed = (state.searchQuery || state.showOnlyUnreviewed) ? false : supplierCollapsed(session, g.supplier, remaining);
       var foodRemaining = g.items.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
       var barRemaining = g.barItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
       var foodSkipped = g.items.filter(function(i){ return entryFor(session,i).skipped; }).length;
@@ -1973,7 +1984,9 @@
       );
     }).join("");
     if(visibleItems.length === 0){
-      groupsHtml = '<div class="empty-search">No items match "'+escHtml(state.searchQuery)+'".</div>';
+      groupsHtml = state.searchQuery
+        ? '<div class="empty-search">No items match "'+escHtml(state.searchQuery)+'".</div>'
+        : '<div class="empty-search">🎉 Nothing left to review — everything is entered or skipped.</div>';
     }
 
     return (
@@ -1997,6 +2010,9 @@
         '</div>'+
         '<div class="progress-line"><span class="num">'+touchedCount+' of '+items.length+' reviewed</span>'+
           '<div class="progress-bar"><i style="width:'+pct+'%"></i></div></div>'+
+        '<button class="unreviewed-toggle '+(state.showOnlyUnreviewed?'active':'')+'" data-action="toggle-unreviewed-filter">'+
+          (state.showOnlyUnreviewed ? '👁 Showing only unreviewed — tap to show all' : '👁 Show only unreviewed')+
+        '</button>'+
         '<div class="column-header row-grid"><span></span><span></span><span>Have</span><span>Order</span><span></span></div>'+
       '</div>'+
       '<div class="list-body">'+groupsHtml+'</div>'+
@@ -2673,6 +2689,10 @@
     }
     else if(action === "clear-search"){
       state.searchQuery = "";
+      render();
+    }
+    else if(action === "toggle-unreviewed-filter"){
+      state.showOnlyUnreviewed = !state.showOnlyUnreviewed;
       render();
     }
     else if(action === "clear-catalog-search"){
