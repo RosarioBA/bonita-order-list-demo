@@ -1468,6 +1468,7 @@
     reorderSection: null, // "food" | "bar" -- which half of that supplier is being reordered
     historyItems: undefined, // undefined = not fetched yet, null = loading, array = loaded (shared across everyone)
     historyError: false,
+    historyFilter: null, // "store-section" key, or null for "All"
     historyReturnTo: null,
     historyWriteStatus: null, // null | "pending" | "ok" | "error" | "unavailable" -- shown on the success screen
     historyWriteError: null, // actual Firestore error code/message, shown alongside historyWriteStatus "error"
@@ -2460,6 +2461,10 @@
 
   function renderHistory(){
     var body;
+    var loaded = isFirebaseConfigured() && state.historyItems && !state.historyError;
+    var items = loaded ? state.historyItems.filter(function(sub){
+      return !state.historyFilter || (sub.store+"-"+sub.section) === state.historyFilter;
+    }) : [];
     if(!isFirebaseConfigured()){
       body = '<div class="empty-search">Shared history needs the cloud connection set up first — see the README.</div>';
     } else if(state.historyItems === null){
@@ -2468,8 +2473,10 @@
       body = '<div class="empty-search">Couldn\'t load shared history right now. Check your connection and try again.</div>';
     } else if(state.historyItems.length === 0){
       body = '<div class="empty-search">No orders submitted yet.</div>';
+    } else if(items.length === 0){
+      body = '<div class="empty-search">No orders submitted yet for this filter.</div>';
     } else {
-      body = state.historyItems.map(function(sub){
+      body = items.map(function(sub){
         return (
           '<button class="history-row" data-action="view-history-item" data-id="'+escHtml(sub.id)+'">'+
             '<span class="history-row-main">'+
@@ -2481,12 +2488,26 @@
         );
       }).join("");
     }
+    // Filter tabs only make sense once there's something to filter --
+    // same filter-tabs pattern/styling as Item Catalog's store tabs.
+    var filterTabs = loaded ? (
+      '<div class="filter-tabs">'+
+        '<button class="'+(!state.historyFilter?'active':'')+'" data-action="filter-history" data-filter="">All</button>'+
+        STORES.map(function(s){
+          return ["kitchen", "bar"].map(function(sec){
+            var key = s.id+"-"+sec;
+            return '<button class="'+(state.historyFilter===key?'active':'')+'" data-action="filter-history" data-filter="'+key+'">'+escHtml(s.name)+' · '+sectionLabel(sec)+'</button>';
+          }).join("");
+        }).join("")+
+      '</div>'
+    ) : "";
     return (
       '<div class="app-header">'+
         '<div class="row1">'+
           '<div class="identity"><span class="store">Order history</span><span class="staff">shared with everyone</span></div>'+
           '<div class="header-actions"><button class="icon-btn" data-action="close-history">✕</button></div>'+
         '</div>'+
+        filterTabs+
       '</div>'+
       '<div class="list-body history-list">'+body+'</div>'
     );
@@ -2786,6 +2807,10 @@
     else if(action === "filter-catalog"){
       state.itemInfoFilter = el.getAttribute("data-filter");
       persistAppState();
+      render();
+    }
+    else if(action === "filter-history"){
+      state.historyFilter = el.getAttribute("data-filter") || null;
       render();
     }
     else if(action === "clear-search"){
