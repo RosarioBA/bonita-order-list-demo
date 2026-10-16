@@ -2505,6 +2505,17 @@
 
   /* ============================= EVENTS ============================= */
 
+  // Tapping into a Have/Order box with a value already in it (most often
+  // "0") otherwise just drops the cursor at the end -- the next digit typed
+  // appends instead of replacing ("0" + "2" = "02"), which is exactly what
+  // tripped someone up on an iPad. Selecting the existing text on focus
+  // means typing a fresh number always just replaces it, like tapping a
+  // calculator field.
+  app.addEventListener("focusin", function(e){
+    var el = e.target;
+    if(el.tagName === "INPUT" && el.classList.contains("cell-input")) el.select();
+  });
+
   app.addEventListener("click", function(e){
     var el = e.target.closest("[data-action]");
     if(!el) return;
