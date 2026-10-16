@@ -664,6 +664,18 @@
   .sheet-actions button{flex:1; border-radius:var(--radius-md); padding:12px; font-weight:700; font-size:.92rem; cursor:pointer; border:1px solid var(--border);}
   .btn-ghost{background:var(--surface); color:var(--text);}
   .btn-primary{background:var(--accent); color:var(--accent-contrast); border-color:var(--accent);}
+  .untouched-list{
+    display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;
+    margin:-2px 0;
+  }
+  .untouched-row{
+    text-align:left; width:100%; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:10px 12px; font-size:.88rem; font-weight:600;
+    color:var(--text); cursor:pointer;
+  }
+  .untouched-es{color:var(--text-muted); font-weight:500;}
+  @keyframes jump-flash{ 0%,100%{background:transparent;} 35%{background:var(--success-tint);} }
+  .jump-highlight{animation:jump-flash 1.4s ease-out;}
 
   .success-screen{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:40px 24px; text-align:center;}
   .success-screen .check{
@@ -2084,12 +2096,19 @@
     );
   }
 
-  function renderConfirmSheet(untouchedCount){
+  function renderConfirmSheet(items){
+    var count = items.length;
+    var rows = items.map(function(i){
+      return '<button class="untouched-row" data-action="jump-to-untouched" data-item="'+i.id+'">'+
+        escHtml(i.name)+(i.nameEs ? ' <span class="untouched-es">· '+escHtml(i.nameEs)+'</span>' : '')+
+      '</button>';
+    }).join("");
     return (
       '<div class="overlay" data-action="dismiss-overlay">'+
         '<div class="sheet" data-action="noop">'+
           '<h3>Submit this list?</h3>'+
-          '<p>'+untouchedCount+' item'+(untouchedCount===1?'':'s')+' on this list '+(untouchedCount===1?'hasn\'t':'haven\'t')+' been entered or skipped yet. You can still submit — nothing blocks it — but take a glance first.</p>'+
+          '<p>'+count+' item'+(count===1?'':'s')+' on this list '+(count===1?'hasn\'t':'haven\'t')+' been entered or skipped yet. Tap one below to jump straight to it, or submit anyway.</p>'+
+          '<div class="untouched-list">'+rows+'</div>'+
           '<div class="sheet-actions">'+
             '<button class="btn-ghost" data-action="cancel-submit">Keep working</button>'+
             '<button class="btn-primary" data-action="confirm-submit">Submit anyway</button>'+
@@ -2479,8 +2498,8 @@
     if(canSubmit && state.confirmSubmitOpen){
       var liveItems = itemsForStore(state.store);
       var liveSession = loadSession(state.store, state.cycle);
-      var untouchedCount = liveItems.filter(function(i){ return !isTouched(entryFor(liveSession,i)); }).length;
-      confirmModal = renderConfirmSheet(untouchedCount);
+      var untouchedItems = liveItems.filter(function(i){ return !isTouched(entryFor(liveSession,i)); });
+      confirmModal = renderConfirmSheet(untouchedItems);
     }
 
     return (
@@ -2807,6 +2826,30 @@
     }
     else if(action === "confirm-submit"){
       submitList();
+    }
+    else if(action === "jump-to-untouched"){
+      // Expand that item's supplier group (it's often the reason it got
+      // missed -- auto-collapsed once everything else in the group was
+      // done) and scroll straight to it, instead of leaving someone to
+      // hunt through a long, partly-collapsed list for a few stragglers.
+      var jumpId = el.getAttribute("data-item");
+      var jumpItem = catalog.filter(function(i){ return i.id === jumpId; })[0];
+      state.confirmSubmitOpen = false;
+      state.searchQuery = ""; // a leftover search filter could otherwise hide the very item we're jumping to
+      if(jumpItem){
+        var jumpSession = loadSession(state.store, state.cycle);
+        if(!jumpSession.collapsed) jumpSession.collapsed = {};
+        jumpSession.collapsed[jumpItem.supplier] = false;
+        saveSession(state.store, state.cycle, jumpSession);
+      }
+      go("order");
+      var freshRow = app.querySelector('[data-item="'+jumpId+'"]');
+      if(freshRow){
+        var contentTopPx = parseFloat(app.style.getPropertyValue("--content-top")) || 0;
+        window.scrollBy(0, freshRow.getBoundingClientRect().top - contentTopPx - 12);
+        freshRow.classList.add("jump-highlight");
+        setTimeout(function(){ freshRow.classList.remove("jump-highlight"); }, 1400);
+      }
     }
     else if(action === "start-new"){
       state.store = null; state.staffName = null; state.lastSubmission = null; state.searchQuery = "";
