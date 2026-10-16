@@ -506,8 +506,10 @@
     padding:5px 10px; font-size:.72rem; font-weight:700; color:var(--danger); cursor:pointer;
   }
   .settings-add.real{color:var(--accent-ink); cursor:pointer;}
-  .settings-substore{margin-bottom:10px;}
-  .settings-substore h4{font-size:.76rem; color:var(--text-muted); font-weight:700; margin-bottom:4px;}
+  .settings-substore{margin-bottom:14px;}
+  .settings-substore h4{font-size:.82rem; color:var(--text); font-weight:800; margin-bottom:6px;}
+  .settings-subsection{margin-bottom:10px; padding-left:8px; border-left:2px solid var(--border);}
+  .settings-subsection h5{font-size:.7rem; color:var(--text-muted); font-weight:700; margin-bottom:4px; text-transform:uppercase; letter-spacing:.03em;}
   .settings-danger:active{background:var(--danger); color:var(--accent-contrast);}
 
   /* ---------- drag-to-reorder (Item Info) ---------- */
@@ -732,10 +734,16 @@
       { id:"dlc",  name:"DLC (Restaurant)", icon:"🍽️" }
     ];
   }
+  // Split per section (kitchen/bar), not shared -- Kitchen and Bar are
+  // always different people. The real roster split isn't known yet, so
+  // both sub-lists start out seeded from the old combined roster; trim
+  // each down to the right people via Settings.
   function defaultStaff(){
+    var cafeAll = ["Rosario", "Kim", "Daniel", "Greta", "Maria J", "Rahman"];
+    var dlcAll = ["Yudi", "Yadira", "Jenny", "Rosada", "Santiago", "Zeljko"];
     return {
-      cafe: ["Rosario", "Kim", "Daniel", "Greta", "Maria J", "Rahman"],
-      dlc: ["Yudi", "Yadira", "Jenny", "Rosada", "Santiago", "Zeljko"]
+      cafe: { kitchen: cafeAll.slice(), bar: cafeAll.slice() },
+      dlc: { kitchen: dlcAll.slice(), bar: dlcAll.slice() }
     };
   }
   // Populated from saved config at boot (see loadConfig/boot) -- these two
@@ -1384,7 +1392,12 @@
     var defStaff = defaultStaff();
     var staff = {};
     stores.forEach(function(s){
-      staff[s.id] = (saved.staff && saved.staff[s.id]) || defStaff[s.id] || [];
+      var savedForStore = saved.staff && saved.staff[s.id];
+      var def = defStaff[s.id] || { kitchen:[], bar:[] };
+      staff[s.id] = {
+        kitchen: (savedForStore && savedForStore.kitchen) || def.kitchen,
+        bar: (savedForStore && savedForStore.bar) || def.bar
+      };
     });
     return { stores: stores, staff: staff };
   }
@@ -1396,14 +1409,17 @@
     scheduleCatalogSync();
   }
 
-  function sessionKey(store, cycle){ return SESSION_KEY_PREFIX + store + "_" + cycle; }
-  function loadSession(store, cycle){
-    var session = readJSON(sessionKey(store, cycle), { items:{}, staffName:null, startedAt:null });
+  // Keyed by section too (kitchen/bar) -- they're independent sessions now,
+  // not a shared one that two different people filling it out at the same
+  // time on two phones could silently clobber each other's entries in.
+  function sessionKey(store, cycle, section){ return SESSION_KEY_PREFIX + store + "_" + cycle + "_" + section; }
+  function loadSession(store, cycle, section){
+    var session = readJSON(sessionKey(store, cycle, section), { items:{}, staffName:null, startedAt:null });
     if(!session.collapsed) session.collapsed = {}; // supplier-group collapse overrides
     return session;
   }
-  function saveSession(store, cycle, session){ writeJSON(sessionKey(store, cycle), session); }
-  function clearSession(store, cycle){ try{ localStorage.removeItem(sessionKey(store, cycle)); }catch(e){} }
+  function saveSession(store, cycle, section, session){ writeJSON(sessionKey(store, cycle, section), session); }
+  function clearSession(store, cycle, section){ try{ localStorage.removeItem(sessionKey(store, cycle, section)); }catch(e){} }
 
   // A supplier group auto-collapses once every item in it is touched
   // (entered or skipped) — but a manual tap always overrides that default,
@@ -1422,8 +1438,9 @@
   var catalog; // assigned in boot(), after any cloud restore has had a chance to run first
 
   var state = {
-    screen: "store",       // store | name | order | item-info | success
+    screen: "store",       // store | section | name | order | item-info | success
     store: null,
+    section: null,         // "kitchen" | "bar" -- which independent list this session is
     staffName: null,
     cycle: nearestCycle(),
     itemInfoFilter: null, // set to the current store when Item Info opens; no combined "all" view
@@ -1458,8 +1475,14 @@
       state.screen = "history";
       return;
     }
+    if(saved.store && saved.screen === "section"){
+      state.store = saved.store;
+      state.screen = "section";
+      return;
+    }
     if(saved.store && (saved.screen === "order" || saved.screen === "item-info")){
       state.store = saved.store;
+      state.section = saved.section || null;
       state.staffName = saved.staffName || null;
       state.cycle = saved.cycle || nearestCycle();
       state.screen = saved.screen;
@@ -1480,7 +1503,7 @@
   }
 
   function persistAppState(){
-    saveAppState({ screen: state.screen, store: state.store, staffName: state.staffName, cycle: state.cycle, itemInfoFilter: state.itemInfoFilter });
+    saveAppState({ screen: state.screen, store: state.store, section: state.section, staffName: state.staffName, cycle: state.cycle, itemInfoFilter: state.itemInfoFilter });
   }
 
   function go(screen){
@@ -1505,9 +1528,16 @@
     var m = u.match(/^([^\s(]+)/);
     return m ? m[1] : u;
   }
-  function itemsForStore(store){ return catalog.filter(function(i){ return i.store === store; }); }
+  // Scoped to one section (kitchen/bar) too -- see isBarCategory. This is
+  // what actually keeps the two flows from ever seeing each other's items
+  // anywhere (list, skip-section, fill-test-data, preview, submit, jump-
+  // to-untouched all build on this one function).
+  function itemsForStore(store, section){
+    return catalog.filter(function(i){ return i.store === store && isBarCategory(i.category) === (section === "bar"); });
+  }
   function parFor(item, cycle){ return cycle === "wed" ? item.parWed : item.parSun; }
   function cycleLabel(cycle){ return cycle === "wed" ? "Wed" : "Sun"; }
+  function sectionLabel(section){ return section === "bar" ? "Bar" : "Kitchen"; }
 
   // Accent-insensitive search (á/ç/etc. shouldn't have to be typed exactly)
   // across name, Spanish name, supplier, category and unit.
@@ -1642,6 +1672,7 @@
 
     var html = "";
     if(state.screen === "store") html = renderStoreSelect();
+    else if(state.screen === "section") html = renderSectionSelect();
     else if(state.screen === "name") html = renderNameSelect();
     else if(state.screen === "order") html = renderOrderList();
     else if(state.screen === "item-info") html = renderItemInfo();
@@ -1746,8 +1777,41 @@
           '<div class="script">let\'s see what the shelves need</div>'+
         '</div>'+
         '<div class="choice-grid">'+cards+'</div>'+
-        '<div class="steps"><span class="active"></span><span></span></div>'+
+        '<div class="steps"><span class="active"></span><span></span><span></span></div>'+
         '<button class="link-btn" data-action="open-settings">⚙ Settings (preview)</button>'+
+      '</div>'
+    );
+  }
+
+  /* ============================= SCREEN 2: SECTION SELECT ============================= */
+
+  // Kitchen and Bar are fully independent from here on -- separate
+  // session, separate staff list, separate submission -- because they're
+  // always filled out by two different people, sometimes at the exact
+  // same time on two different phones. Before this screen existed they
+  // shared one session per store+cycle, which meant one person's edits
+  // could silently overwrite the other's.
+  function renderSectionSelect(){
+    var storeName = STORES.filter(function(s){return s.id===state.store;})[0].name;
+    var sections = [
+      { id:"kitchen", icon:"🍳", label:"Kitchen" },
+      { id:"bar", icon:"🍹", label:"Bar" }
+    ];
+    var cards = sections.map(function(sec){
+      return '<div class="choice-card" data-action="pick-section" data-section="'+sec.id+'">'+
+        '<div class="icon">'+sec.icon+'</div>'+
+        '<div class="label">'+sec.label+'</div>'+
+      '</div>';
+    }).join("");
+    return (
+      '<div class="back-row" data-action="back-to-store">‹ '+escHtml(storeName)+'</div>'+
+      '<div class="centered-screen">'+
+        '<div class="heading">'+
+          '<h1>Kitchen or Bar?</h1>'+
+          '<div class="script">each has its own list</div>'+
+        '</div>'+
+        '<div class="choice-grid">'+cards+'</div>'+
+        '<div class="steps"><span></span><span class="active"></span><span></span></div>'+
       '</div>'
     );
   }
@@ -1794,19 +1858,23 @@
     var staffSection = (
       '<div class="settings-section">'+
         '<h3>Staff</h3>'+
-        '<p class="settings-hint">Names shown on the name-select screen — per location, since different '+
-          'people fill out each one.</p>'+
+        '<p class="settings-hint">Names shown on the name-select screen — per location and section '+
+          '(Kitchen/Bar), since those are always different people.</p>'+
         STORES.map(function(s){
-          var names = STAFF[s.id] || [];
-          var rows = names.map(function(name, idx){
-            return '<div class="settings-row">'+
-              '<input type="text" class="settings-input" value="'+escHtml(name)+'" data-action="edit-staff-name" data-store="'+s.id+'" data-index="'+idx+'">'+
-              '<button class="settings-remove-btn" data-action="remove-staff" data-store="'+s.id+'" data-index="'+idx+'">Remove</button>'+
+          var bySection = STAFF[s.id] || { kitchen:[], bar:[] };
+          var sectionBlocks = ["kitchen", "bar"].map(function(sec){
+            var names = bySection[sec] || [];
+            var rows = names.map(function(name, idx){
+              return '<div class="settings-row">'+
+                '<input type="text" class="settings-input" value="'+escHtml(name)+'" data-action="edit-staff-name" data-store="'+s.id+'" data-section="'+sec+'" data-index="'+idx+'">'+
+                '<button class="settings-remove-btn" data-action="remove-staff" data-store="'+s.id+'" data-section="'+sec+'" data-index="'+idx+'">Remove</button>'+
+              '</div>';
+            }).join("");
+            return '<div class="settings-subsection"><h5>'+sectionLabel(sec)+'</h5>'+rows+
+              '<button class="settings-add real" data-action="add-staff" data-store="'+s.id+'" data-section="'+sec+'">+ Add a staff member</button>'+
             '</div>';
           }).join("");
-          return '<div class="settings-substore"><h4>'+escHtml(s.name)+'</h4>'+rows+
-            '<button class="settings-add real" data-action="add-staff" data-store="'+s.id+'">+ Add a staff member</button>'+
-          '</div>';
+          return '<div class="settings-substore"><h4>'+escHtml(s.name)+'</h4>'+sectionBlocks+'</div>';
         }).join("")+
       '</div>'
     );
@@ -1835,29 +1903,28 @@
     );
   }
 
-  /* ============================= SCREEN 2: NAME SELECT ============================= */
+  /* ============================= SCREEN 3: NAME SELECT ============================= */
 
   function renderNameSelect(){
-    var rows = (STAFF[state.store] || []).map(function(n){
+    var rows = ((STAFF[state.store] && STAFF[state.store][state.section]) || []).map(function(n){
       return '<div class="name-row" data-action="pick-name" data-name="'+escHtml(n)+'">'+
         '<span>'+escHtml(n)+'</span><span class="chevron">›</span>'+
       '</div>';
     }).join("");
-    var storeName = STORES.filter(function(s){return s.id===state.store;})[0].name;
     return (
-      '<div class="back-row" data-action="back-to-store">‹ '+escHtml(storeName)+'</div>'+
+      '<div class="back-row" data-action="back-to-section">‹ '+sectionLabel(state.section)+'</div>'+
       '<div class="centered-screen">'+
         '<div class="heading">'+
           '<h1>Who\'s filling this out?</h1>'+
           '<div class="script">just so we know who to thank</div>'+
         '</div>'+
         '<div class="name-list">'+rows+'</div>'+
-        '<div class="steps"><span></span><span class="active"></span></div>'+
+        '<div class="steps"><span></span><span></span><span class="active"></span></div>'+
       '</div>'
     );
   }
 
-  /* ============================= SCREEN 3: ORDER LIST ============================= */
+  /* ============================= SCREEN 4: ORDER LIST ============================= */
 
   // Two-level grouping: supplier (the brief's required grouping), then
   // category as a sub-header where the catalog has one — mirrors how the
@@ -1924,13 +1991,13 @@
   }
 
   function renderOrderList(){
-    var items = itemsForStore(state.store);
-    var session = loadSession(state.store, state.cycle);
+    var items = itemsForStore(state.store, state.section);
+    var session = loadSession(state.store, state.cycle, state.section);
     items.forEach(function(item){
       var entry = entryFor(session, item);
       recomputeOrder(entry, item);
     });
-    saveSession(state.store, state.cycle, session);
+    saveSession(state.store, state.cycle, state.section, session);
 
     var touchedCount = items.filter(function(i){ return isTouched(entryFor(session,i)); }).length;
     var pct = items.length ? Math.round((touchedCount/items.length)*100) : 0;
@@ -1942,34 +2009,26 @@
     if(state.showOnlyUnreviewed) visibleItems = visibleItems.filter(function(i){ return !isTouched(entryFor(session,i)); });
     var groups = groupBySupplier(visibleItems);
     var groupsHtml = groups.map(function(g){
-      var allItems = g.items.concat(g.barItems);
-      var remaining = allItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      // itemsForStore already scoped everything to this session's one
+      // section, so only one of g.items/g.barItems is ever populated here
+      // -- pick whichever (groupBySupplier itself is shared with Item
+      // Catalog's store-wide view, which still needs the split).
+      var sectionItems = state.section === "bar" ? g.barItems : g.items;
+      var remaining = sectionItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
+      var skippedCount = sectionItems.filter(function(i){ return entryFor(session,i).skipped; }).length;
       // Search and the "only unreviewed" filter both always show full
       // results, regardless of collapse state -- otherwise a manually or
       // auto-collapsed group would hide exactly the items someone's trying
       // to surface.
       var collapsed = (state.searchQuery || state.showOnlyUnreviewed) ? false : supplierCollapsed(session, g.supplier, remaining);
-      var foodRemaining = g.items.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
-      var barRemaining = g.barItems.filter(function(i){ return !isTouched(entryFor(session,i)); }).length;
-      var foodSkipped = g.items.filter(function(i){ return entryFor(session,i).skipped; }).length;
-      var barSkipped = g.barItems.filter(function(i){ return entryFor(session,i).skipped; }).length;
       var gs = escHtml(g.supplier);
-      var skipFoodBtn =
-        (foodRemaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+gs+'" data-section="food">Skip rest</button>' : "")+
-        (foodSkipped > 0 ? '<button class="skip-section-btn unskip" data-action="unskip-section" data-supplier="'+gs+'" data-section="food">Unskip all</button>' : "");
+      var skipBtn =
+        (remaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+gs+'">Skip rest</button>' : "")+
+        (skippedCount > 0 ? '<button class="skip-section-btn unskip" data-action="unskip-section" data-supplier="'+gs+'">Unskip all</button>' : "");
       var rowsHtml = collapsed ? "" : (
-        (skipFoodBtn ? '<div class="section-actions">'+skipFoodBtn+'</div>' : "") +
-        g.items.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")
+        (skipBtn ? '<div class="section-actions">'+skipBtn+'</div>' : "") +
+        sectionItems.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")
       );
-      var barHtml = (!collapsed && g.barItems.length) ? (
-        '<div class="bar-section">'+
-          '<div class="section-head"><span class="bar-section-label">🍹 Bar</span>'+
-            (barRemaining > 0 ? '<button class="skip-section-btn" data-action="skip-section" data-supplier="'+gs+'" data-section="bar">Skip rest</button>' : "")+
-            (barSkipped > 0 ? '<button class="skip-section-btn unskip" data-action="unskip-section" data-supplier="'+gs+'" data-section="bar">Unskip all</button>' : "")+
-          '</div>'+
-          g.barItems.map(function(item){ return renderItemCard(item, entryFor(session,item)); }).join("")+
-        '</div>'
-      ) : "";
       return (
         '<div class="supplier-group">'+
           '<button class="supplier-head" data-action="toggle-supplier" data-supplier="'+gs+'">'+
@@ -1979,7 +2038,6 @@
             '</span><span class="chevron">'+(collapsed?"▸":"▾")+'</span></span>'+
           '</button>'+
           rowsHtml+
-          barHtml+
         '</div>'
       );
     }).join("");
@@ -1992,7 +2050,7 @@
     return (
       '<div class="app-header">'+
         '<div class="row1">'+
-          '<div class="identity"><span class="store">'+escHtml(storeName)+'</span><span class="staff">'+escHtml(state.staffName)+'</span></div>'+
+          '<div class="identity"><span class="store">'+escHtml(storeName)+' · '+sectionLabel(state.section)+'</span><span class="staff">'+escHtml(state.staffName)+'</span></div>'+
           '<div class="header-actions">'+
             '<button class="icon-btn" data-action="open-item-info" title="Item catalog"><span>📖</span><span class="icon-btn-label">Catalog</span></button>'+
             '<button class="icon-btn" data-action="open-history" title="Order history"><span>🕑</span><span class="icon-btn-label">History</span></button>'+
@@ -2189,7 +2247,7 @@
     }
   }
 
-  /* ============================= SCREEN 4: ITEM INFO ============================= */
+  /* ============================= SCREEN 5: ITEM INFO ============================= */
 
   function renderItemInfo(){
     // Always scoped to one store — a combined view made same-named items
@@ -2322,7 +2380,7 @@
       '<div class="success-screen">'+
         '<div class="check">✓</div>'+
         '<h2>List saved</h2>'+
-        '<p><b>'+escHtml(sub.storeName)+'</b> · '+cycleLabel(sub.cycle)+' cycle<br>'+escHtml(sub.date)+' · submitted by '+escHtml(sub.staffName)+'<br>'+escHtml(sub.itemCount)+' items on the list</p>'+
+        '<p><b>'+escHtml(sub.storeName)+' · '+sectionLabel(sub.section)+'</b> · '+cycleLabel(sub.cycle)+' cycle<br>'+escHtml(sub.date)+' · submitted by '+escHtml(sub.staffName)+'<br>'+escHtml(sub.itemCount)+' items on the list</p>'+
         historyNote+
         '<button class="submit-btn" style="max-width:260px" data-action="copy-order-success">📋 Copy order</button>'+
         '<div class="copy-flash" data-role="copy-flash" hidden></div>'+
@@ -2379,7 +2437,7 @@
         return (
           '<button class="history-row" data-action="view-history-item" data-id="'+escHtml(sub.id)+'">'+
             '<span class="history-row-main">'+
-              '<b>'+escHtml(sub.storeName)+' · '+cycleLabel(sub.cycle)+'</b>'+
+              '<b>'+escHtml(sub.storeName)+' · '+sectionLabel(sub.section)+' · '+cycleLabel(sub.cycle)+'</b>'+
               '<span class="history-meta">'+escHtml(sub.date)+' · '+escHtml(sub.staffName)+' · '+escHtml(sub.itemCount)+' items</span>'+
             '</span>'+
             '<span class="history-chevron">›</span>'+
@@ -2435,7 +2493,7 @@
   // doesn't work inside the Artifact viewer's sandbox, so copy-and-paste
   // (into WhatsApp, email, Notes, whatever) is the reliable path here.
   function buildPrintText(d){
-    var lines = [d.storeName+" — Order", cycleLabel(d.cycle)+" cycle · "+d.date+" · prepared by "+d.staffName, ""];
+    var lines = [d.storeName+" ("+sectionLabel(d.section)+") — Order", cycleLabel(d.cycle)+" cycle · "+d.date+" · prepared by "+d.staffName, ""];
     var groups = groupPrintLines(d.items);
     if(groups.length === 0){
       lines.push("Nothing to order this cycle.");
@@ -2461,7 +2519,7 @@
         return touched && !i.skipped && (parseFloat(i.order)||0) > 0;
       })
       .map(function(i){ return { item: i, order: parseFloat(i.order) || 0 }; });
-    return { storeName: sub.storeName, cycle: sub.cycle, staffName: sub.staffName, date: sub.date, items: subLines };
+    return { storeName: sub.storeName, section: sub.section, cycle: sub.cycle, staffName: sub.staffName, date: sub.date, items: subLines };
   }
 
   // Shared clipboard-copy + flash-message behavior, used by the print
@@ -2512,8 +2570,8 @@
     var canSubmit = state.printReturnTo === "order";
     var confirmModal = "";
     if(canSubmit && state.confirmSubmitOpen){
-      var liveItems = itemsForStore(state.store);
-      var liveSession = loadSession(state.store, state.cycle);
+      var liveItems = itemsForStore(state.store, state.section);
+      var liveSession = loadSession(state.store, state.cycle, state.section);
       var untouchedItems = liveItems.filter(function(i){ return !isTouched(entryFor(liveSession,i)); });
       confirmModal = renderConfirmSheet(untouchedItems);
     }
@@ -2531,7 +2589,7 @@
         '<div class="no-print copy-flash" data-role="copy-flash" hidden>Copied — paste it into WhatsApp, email, or Notes.</div>'+
         '<div class="print-header">'+
           '<div class="wordmark">Bonita</div>'+
-          '<h1>'+escHtml(d.storeName)+' — Order</h1>'+
+          '<h1>'+escHtml(d.storeName)+' ('+sectionLabel(d.section)+') — Order</h1>'+
           '<p>'+cycleLabel(d.cycle)+' cycle · '+escHtml(d.date)+' · prepared by '+escHtml(d.staffName)+'</p>'+
         '</div>'+
         groupsHtml+
@@ -2561,18 +2619,27 @@
 
     if(action === "pick-store"){
       state.store = el.getAttribute("data-store");
-      go("name");
+      go("section");
     }
     else if(action === "back-to-store"){
       state.store = null;
+      state.section = null;
       go("store");
+    }
+    else if(action === "pick-section"){
+      state.section = el.getAttribute("data-section");
+      go("name");
+    }
+    else if(action === "back-to-section"){
+      state.section = null;
+      go("section");
     }
     else if(action === "pick-name"){
       state.staffName = el.getAttribute("data-name");
       go("order");
     }
     else if(action === "switch-user"){
-      state.store = null; state.staffName = null; state.searchQuery = "";
+      state.store = null; state.section = null; state.staffName = null; state.searchQuery = "";
       go("store");
     }
     else if(action === "set-cycle"){
@@ -2582,12 +2649,12 @@
     }
     else if(action === "toggle-supplier"){
       var supplierName = el.getAttribute("data-supplier");
-      var supplierItems = itemsForStore(state.store).filter(function(i){ return i.supplier === supplierName; });
-      var supplierSession = loadSession(state.store, state.cycle);
+      var supplierItems = itemsForStore(state.store, state.section).filter(function(i){ return i.supplier === supplierName; });
+      var supplierSession = loadSession(state.store, state.cycle, state.section);
       var supplierRemaining = supplierItems.filter(function(i){ return !isTouched(entryFor(supplierSession,i)); }).length;
       var currentlyCollapsed = supplierCollapsed(supplierSession, supplierName, supplierRemaining);
       supplierSession.collapsed[supplierName] = !currentlyCollapsed;
-      saveSession(state.store, state.cycle, supplierSession);
+      saveSession(state.store, state.cycle, state.section, supplierSession);
       render();
     }
     else if(action === "toggle-info"){
@@ -2609,12 +2676,12 @@
     else if(action === "pick-onhand"){
       var pickId = el.getAttribute("data-item");
       var pickItem = catalog.filter(function(i){return i.id===pickId;})[0];
-      var pickSession = loadSession(state.store, state.cycle);
+      var pickSession = loadSession(state.store, state.cycle, state.section);
       var pickEntry = entryFor(pickSession, pickItem);
       pickEntry.onHand = el.getAttribute("data-value");
       if(pickEntry.skipped) pickEntry.skipped = false;
       recomputeOrder(pickEntry, pickItem);
-      saveSession(state.store, state.cycle, pickSession);
+      saveSession(state.store, state.cycle, state.section, pickSession);
       state.openOnHandPicker = null;
       render();
     }
@@ -2628,53 +2695,51 @@
     }
     else if(action === "toggle-skip"){
       var id = el.getAttribute("data-item");
-      var session = loadSession(state.store, state.cycle);
+      var session = loadSession(state.store, state.cycle, state.section);
       var item = catalog.filter(function(i){return i.id===id;})[0];
       var entry = entryFor(session, item);
       entry.skipped = !entry.skipped;
-      saveSession(state.store, state.cycle, session);
+      saveSession(state.store, state.cycle, state.section, session);
       render();
     }
     else if(action === "skip-section"){
-      // Bulk-skip whatever's left in just this one food/Bar section of a
-      // supplier -- for whoever's only responsible for half the list (e.g.
-      // kitchen staff skipping Bar, or vice versa), so they're not tapping
-      // Skip on every single item by hand.
+      // Bulk-skip whatever's left for one supplier -- so no one has to tap
+      // Skip on every single item by hand. Every item itemsForStore returns
+      // already belongs to this session's section (kitchen or bar), so no
+      // extra food/Bar filtering is needed here any more.
       var skSupplier = el.getAttribute("data-supplier");
-      var skSection = el.getAttribute("data-section");
-      var skItems = itemsForStore(state.store).filter(function(i){
-        return i.supplier === skSupplier && (isBarCategory(i.category) ? "bar" : "food") === skSection;
+      var skItems = itemsForStore(state.store, state.section).filter(function(i){
+        return i.supplier === skSupplier;
       });
-      var skSession = loadSession(state.store, state.cycle);
+      var skSession = loadSession(state.store, state.cycle, state.section);
       skItems.forEach(function(item){
         var e = entryFor(skSession, item);
         if(!isTouched(e)) e.skipped = true;
       });
-      saveSession(state.store, state.cycle, skSession);
+      saveSession(state.store, state.cycle, state.section, skSession);
       render();
     }
     else if(action === "unskip-section"){
       var unSupplier = el.getAttribute("data-supplier");
-      var unSection = el.getAttribute("data-section");
-      var unItems = itemsForStore(state.store).filter(function(i){
-        return i.supplier === unSupplier && (isBarCategory(i.category) ? "bar" : "food") === unSection;
+      var unItems = itemsForStore(state.store, state.section).filter(function(i){
+        return i.supplier === unSupplier;
       });
-      var unSession = loadSession(state.store, state.cycle);
+      var unSession = loadSession(state.store, state.cycle, state.section);
       unItems.forEach(function(item){
         var e = entryFor(unSession, item);
         if(e.skipped) e.skipped = false;
       });
-      saveSession(state.store, state.cycle, unSession);
+      saveSession(state.store, state.cycle, state.section, unSession);
       render();
     }
     else if(action === "reset-auto"){
       var id2 = el.getAttribute("data-item");
-      var session2 = loadSession(state.store, state.cycle);
+      var session2 = loadSession(state.store, state.cycle, state.section);
       var item2 = catalog.filter(function(i){return i.id===id2;})[0];
       var entry2 = entryFor(session2, item2);
       entry2.manualOrder = false;
       recomputeOrder(entry2, item2);
-      saveSession(state.store, state.cycle, session2);
+      saveSession(state.store, state.cycle, state.section, session2);
       render();
     }
     else if(action === "open-item-info"){
@@ -2709,20 +2774,20 @@
       // hand" (full par ordered) so a full test submit doesn't require
       // tapping through the whole list by hand. Leaves anything already
       // entered or skipped alone.
-      var fillItems = itemsForStore(state.store);
-      var fillSession = loadSession(state.store, state.cycle);
+      var fillItems = itemsForStore(state.store, state.section);
+      var fillSession = loadSession(state.store, state.cycle, state.section);
       fillItems.forEach(function(item){
         var e = entryFor(fillSession, item);
         if(isTouched(e)) return;
         e.onHand = "0";
         recomputeOrder(e, item);
       });
-      saveSession(state.store, state.cycle, fillSession);
+      saveSession(state.store, state.cycle, state.section, fillSession);
       render();
     }
     else if(action === "preview-print"){
-      var previewItems = itemsForStore(state.store);
-      var previewSession = loadSession(state.store, state.cycle);
+      var previewItems = itemsForStore(state.store, state.section);
+      var previewSession = loadSession(state.store, state.cycle, state.section);
       var previewStoreName = STORES.filter(function(s){return s.id===state.store;})[0].name;
       var lines = [];
       previewItems.forEach(function(item){
@@ -2737,7 +2802,7 @@
         lines.push({ item: item, order: order });
       });
       state.printData = {
-        storeName: previewStoreName, cycle: state.cycle, staffName: state.staffName,
+        storeName: previewStoreName, section: state.section, cycle: state.cycle, staffName: state.staffName,
         date: new Date().toISOString().slice(0,10), items: lines
       };
       state.printReturnTo = "order";
@@ -2785,18 +2850,21 @@
     }
     else if(action === "add-staff"){
       var addStore = el.getAttribute("data-store");
-      if(!STAFF[addStore]) STAFF[addStore] = [];
-      STAFF[addStore].push("New staff member");
+      var addSection = el.getAttribute("data-section");
+      if(!STAFF[addStore]) STAFF[addStore] = { kitchen:[], bar:[] };
+      if(!STAFF[addStore][addSection]) STAFF[addStore][addSection] = [];
+      STAFF[addStore][addSection].push("New staff member");
       saveConfig({ stores: STORES, staff: STAFF });
       render();
-      var newIdx = STAFF[addStore].length - 1;
-      var freshNew = app.querySelector('[data-action="edit-staff-name"][data-store="'+addStore+'"][data-index="'+newIdx+'"]');
+      var newIdx = STAFF[addStore][addSection].length - 1;
+      var freshNew = app.querySelector('[data-action="edit-staff-name"][data-store="'+addStore+'"][data-section="'+addSection+'"][data-index="'+newIdx+'"]');
       if(freshNew){ freshNew.focus(); freshNew.select(); }
     }
     else if(action === "remove-staff"){
       var rmStore = el.getAttribute("data-store");
+      var rmSection = el.getAttribute("data-section");
       var rmIdx = parseInt(el.getAttribute("data-index"), 10);
-      if(STAFF[rmStore]) STAFF[rmStore].splice(rmIdx, 1);
+      if(STAFF[rmStore] && STAFF[rmStore][rmSection]) STAFF[rmStore][rmSection].splice(rmIdx, 1);
       saveConfig({ stores: STORES, staff: STAFF });
       render();
     }
@@ -2827,11 +2895,11 @@
     }
     else if(action === "share-order"){
       var shareText = buildPrintText(state.printData);
-      navigator.share({ title: state.printData.storeName + " — Order", text: shareText }).catch(function(){});
+      navigator.share({ title: state.printData.storeName + " (" + sectionLabel(state.printData.section) + ") — Order", text: shareText }).catch(function(){});
     }
     else if(action === "request-submit"){
-      var checkItems = itemsForStore(state.store);
-      var checkSession = loadSession(state.store, state.cycle);
+      var checkItems = itemsForStore(state.store, state.section);
+      var checkSession = loadSession(state.store, state.cycle, state.section);
       var anyUntouched = checkItems.some(function(i){ return !isTouched(entryFor(checkSession,i)); });
       if(anyUntouched){
         state.confirmSubmitOpen = true;
@@ -2857,10 +2925,10 @@
       state.confirmSubmitOpen = false;
       state.searchQuery = ""; // a leftover search filter could otherwise hide the very item we're jumping to
       if(jumpItem){
-        var jumpSession = loadSession(state.store, state.cycle);
+        var jumpSession = loadSession(state.store, state.cycle, state.section);
         if(!jumpSession.collapsed) jumpSession.collapsed = {};
         jumpSession.collapsed[jumpItem.supplier] = false;
-        saveSession(state.store, state.cycle, jumpSession);
+        saveSession(state.store, state.cycle, state.section, jumpSession);
       }
       go("order");
       var freshRow = app.querySelector('[data-item="'+jumpId+'"]');
@@ -2872,7 +2940,7 @@
       }
     }
     else if(action === "start-new"){
-      state.store = null; state.staffName = null; state.lastSubmission = null; state.searchQuery = "";
+      state.store = null; state.section = null; state.staffName = null; state.lastSubmission = null; state.searchQuery = "";
       go("store");
     }
   });
@@ -2936,19 +3004,20 @@
       // Staff section further down this same screen, so this is a full
       // render too, with the same cursor-position preservation.
       var cfgStore = el.getAttribute("data-store");
+      var cfgSection = el.getAttribute("data-section");
       var cfgIndexAttr = el.getAttribute("data-index");
       if(action === "edit-store-name"){
         var storeObj = STORES.filter(function(s){return s.id===cfgStore;})[0];
         if(storeObj) storeObj.name = el.value;
       } else {
         var staffIdx = parseInt(cfgIndexAttr, 10);
-        if(STAFF[cfgStore]) STAFF[cfgStore][staffIdx] = el.value;
+        if(STAFF[cfgStore] && STAFF[cfgStore][cfgSection]) STAFF[cfgStore][cfgSection][staffIdx] = el.value;
       }
       saveConfig({ stores: STORES, staff: STAFF });
       var cfgPos = null;
       try{ cfgPos = el.selectionStart; }catch(err){}
       render();
-      var cfgSelector = '[data-action="'+action+'"][data-store="'+cfgStore+'"]'+(cfgIndexAttr!=null ? '[data-index="'+cfgIndexAttr+'"]' : '');
+      var cfgSelector = '[data-action="'+action+'"][data-store="'+cfgStore+'"]'+(cfgSection!=null ? '[data-section="'+cfgSection+'"]' : '')+(cfgIndexAttr!=null ? '[data-index="'+cfgIndexAttr+'"]' : '');
       var freshCfg = app.querySelector(cfgSelector);
       if(freshCfg){
         freshCfg.focus();
@@ -2959,7 +3028,7 @@
     }
 
     var id = el.getAttribute("data-item");
-    var session = loadSession(state.store, state.cycle);
+    var session = loadSession(state.store, state.cycle, state.section);
     var item = catalog.filter(function(i){return i.id===id;})[0];
 
     if(action === "input-onhand"){
@@ -2967,7 +3036,7 @@
       entry.onHand = el.value;
       if(entry.skipped && el.value !== "") entry.skipped = false;
       recomputeOrder(entry, item);
-      saveSession(state.store, state.cycle, session);
+      saveSession(state.store, state.cycle, state.section, session);
       // update just this card's dependent bits without a full re-render jump on this field
       refreshCard(item, entry);
     }
@@ -2976,7 +3045,7 @@
       entry2.order = el.value;
       entry2.manualOrder = true;
       if(entry2.skipped && el.value !== "") entry2.skipped = false;
-      saveSession(state.store, state.cycle, session);
+      saveSession(state.store, state.cycle, state.section, session);
       refreshCard(item, entry2);
     }
     else if(action === "edit-unit"){
@@ -3053,8 +3122,8 @@
   // is actively typing in — "you have" or "order" — keeps focus and cursor
   // position across the swap.
   function refreshCard(item, entry){
-    var items = itemsForStore(state.store);
-    var session = loadSession(state.store, state.cycle);
+    var items = itemsForStore(state.store, state.section);
+    var session = loadSession(state.store, state.cycle, state.section);
 
     // If this edit just finished the last item in its supplier group and
     // that group is about to auto-collapse, the row (and its siblings) are
@@ -3110,13 +3179,14 @@
   }
 
   function submitList(){
-    var items = itemsForStore(state.store);
-    var session = loadSession(state.store, state.cycle);
+    var items = itemsForStore(state.store, state.section);
+    var session = loadSession(state.store, state.cycle, state.section);
     var storeName = STORES.filter(function(s){return s.id===state.store;})[0].name;
     var record = {
       date: new Date().toISOString().slice(0,10),
       store: state.store,
       storeName: storeName,
+      section: state.section,
       cycle: state.cycle,
       staffName: state.staffName,
       itemCount: items.length,
@@ -3136,7 +3206,7 @@
     submissions.push(record);
     writeJSON(SUBMISSIONS_KEY, submissions);
 
-    clearSession(state.store, state.cycle);
+    clearSession(state.store, state.cycle, state.section);
     state.confirmSubmitOpen = false;
     state.lastSubmission = record;
     state.historyWriteStatus = "pending";
