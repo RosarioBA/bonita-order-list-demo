@@ -761,6 +761,7 @@
   // is a frozen copy of the old default data.
   var CATALOG_OVERRIDES_KEY = "bonita_ol_catalog_overrides_v1"; // itemId -> { field: value }
   var CATALOG_ORDER_KEY = "bonita_ol_catalog_order_v1"; // "store|supplier" -> [itemId, ...]
+  var CATALOG_DELETED_KEY = "bonita_ol_catalog_deleted_v1"; // [itemId, ...] -- manually deleted from Item Catalog
   var CONFIG_KEY = "bonita_ol_config_v1"; // { storeNames: {id: name}, staff: {id: [names]} }
   var SESSION_KEY_PREFIX = "bonita_ol_session_v1_";
   var SUBMISSIONS_KEY = "bonita_ol_submissions_v1";
@@ -1266,6 +1267,7 @@
     var payload = {
       overrides: readJSON(CATALOG_OVERRIDES_KEY, {}),
       order: readJSON(CATALOG_ORDER_KEY, {}),
+      deleted: readJSON(CATALOG_DELETED_KEY, []),
       config: readJSON(CONFIG_KEY, {}),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -1299,6 +1301,7 @@
           var data = sharedDoc.data();
           if(data.overrides) localStorage.setItem(CATALOG_OVERRIDES_KEY, JSON.stringify(data.overrides));
           if(data.order) localStorage.setItem(CATALOG_ORDER_KEY, JSON.stringify(data.order));
+          if(data.deleted) localStorage.setItem(CATALOG_DELETED_KEY, JSON.stringify(data.deleted));
           if(data.config) localStorage.setItem(CONFIG_KEY, JSON.stringify(data.config));
         }
         cloudReady = true;
@@ -1315,6 +1318,8 @@
 
   function loadCatalog(){
     var cat = defaultCatalog();
+    var deletedIds = readJSON(CATALOG_DELETED_KEY, []);
+    if(deletedIds.length) cat = cat.filter(function(item){ return deletedIds.indexOf(item.id) === -1; });
     var overrides = readJSON(CATALOG_OVERRIDES_KEY, {});
     var order = readJSON(CATALOG_ORDER_KEY, {});
 
@@ -1371,9 +1376,20 @@
     scheduleCatalogSync();
   }
 
+  // Manual delete from Item Catalog -- a deleted id is excluded in
+  // loadCatalog() regardless of what defaultCatalog() does, same as any
+  // other override surviving a future catalog data change.
+  function deleteCatalogItem(itemId){
+    var deleted = readJSON(CATALOG_DELETED_KEY, []);
+    if(deleted.indexOf(itemId) === -1) deleted.push(itemId);
+    writeJSON(CATALOG_DELETED_KEY, deleted);
+    scheduleCatalogSync();
+  }
+
   function resetCatalogEdits(){
     writeJSON(CATALOG_OVERRIDES_KEY, {});
     writeJSON(CATALOG_ORDER_KEY, {});
+    writeJSON(CATALOG_DELETED_KEY, []);
     scheduleCatalogSync();
   }
 
@@ -1447,6 +1463,7 @@
     lastSubmission: null,
     confirmSubmitOpen: false,
     confirmResetOpen: false,
+    confirmDeleteItem: null, // itemId pending delete confirmation on Item Catalog, or null
     reorderSupplier: null, // supplier name currently in drag-to-reorder mode on Item Info, or null
     reorderSection: null, // "food" | "bar" -- which half of that supplier is being reordered
     historyItems: undefined, // undefined = not fetched yet, null = loading, array = loaded (shared across everyone)
@@ -2315,7 +2332,8 @@
         }).join("")+
       '</div>'+
       '<div class="list-body" style="padding-bottom:40px;">'+groupsHtml+'</div>'+
-      '<div class="footer-links"><button class="link-btn" data-action="reset-catalog">Reset catalog to defaults</button></div>'
+      '<div class="footer-links"><button class="link-btn" data-action="reset-catalog">Reset catalog to defaults</button></div>'+
+      (state.confirmDeleteItem ? renderDeleteItemSheet(state.confirmDeleteItem) : "")
     );
   }
 
@@ -2347,6 +2365,24 @@
           '<div class="field"><label>Par (Sun)</label><input type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" value="'+item.parSun+'" data-action="edit-par-sun" data-item="'+item.id+'"></div>'+
         '</div>'+
         '<div class="box-weight" data-role="box-weight">'+(bw==null ? "Box weight: —" : "Box weight: "+fmt(bw)+" g")+'</div>'+
+        '<button class="settings-remove-btn" style="margin-top:8px" data-action="request-delete-item" data-item="'+item.id+'">Delete item</button>'+
+      '</div>'
+    );
+  }
+
+  function renderDeleteItemSheet(itemId){
+    var item = catalog.filter(function(i){ return i.id === itemId; })[0];
+    if(!item) return "";
+    return (
+      '<div class="overlay" data-action="cancel-delete-item">'+
+        '<div class="sheet" data-action="noop">'+
+          '<h3>Delete this item?</h3>'+
+          '<p>"'+escHtml(item.name)+'" will be removed from the catalog for every device. This can\'t be undone from here.</p>'+
+          '<div class="sheet-actions">'+
+            '<button class="btn-ghost" data-action="cancel-delete-item">Cancel</button>'+
+            '<button class="btn-primary" style="background:var(--danger); border-color:var(--danger)" data-action="confirm-delete-item" data-item="'+item.id+'">Delete</button>'+
+          '</div>'+
+        '</div>'+
       '</div>'
     );
   }
@@ -2766,6 +2802,20 @@
     }
     else if(action === "reset-catalog"){
       resetCatalogEdits();
+      catalog = loadCatalog();
+      render();
+    }
+    else if(action === "request-delete-item"){
+      state.confirmDeleteItem = el.getAttribute("data-item");
+      render();
+    }
+    else if(action === "cancel-delete-item"){
+      state.confirmDeleteItem = null;
+      render();
+    }
+    else if(action === "confirm-delete-item"){
+      deleteCatalogItem(el.getAttribute("data-item"));
+      state.confirmDeleteItem = null;
       catalog = loadCatalog();
       render();
     }
