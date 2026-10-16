@@ -2278,8 +2278,10 @@
     var historyNote = "";
     if(state.historyWriteStatus === "pending") historyNote = '<p class="history-status">Adding to shared history…</p>';
     else if(state.historyWriteStatus === "ok") historyNote = '<p class="history-status ok">✓ Added to shared history</p>';
-    else if(state.historyWriteStatus === "error") historyNote = '<p class="history-status error">⚠ Couldn\'t add to shared history: '+escHtml(state.historyWriteError||"unknown error")+' — still saved on this device</p>';
-    else if(state.historyWriteStatus === "unavailable") historyNote = '<p class="history-status error">⚠ Not connected to the cloud right now — not added to shared history</p>';
+    else if(state.historyWriteStatus === "error") historyNote = '<p class="history-status error">⚠ Couldn\'t add to shared history: '+escHtml(state.historyWriteError||"unknown error")+' — still saved on this device</p>'+
+      '<button class="link-btn" data-action="retry-shared-submission">↻ Try adding to shared history again</button>';
+    else if(state.historyWriteStatus === "unavailable") historyNote = '<p class="history-status error">⚠ Not connected to the cloud right now — not added to shared history</p>'+
+      '<button class="link-btn" data-action="retry-shared-submission">↻ Try adding to shared history again</button>';
     return (
       '<div class="success-screen">'+
         '<div class="check">✓</div>'+
@@ -2775,6 +2777,14 @@
     else if(action === "copy-order-success"){
       copyOrderText(buildPrintText(printDataFromSubmission(state.lastSubmission)));
     }
+    else if(action === "retry-shared-submission"){
+      // The local copy is already safely saved (that happened synchronously
+      // in submitList() before this ever ran) -- this only re-attempts the
+      // shared Firestore write, using the same bounded wait/give-up logic.
+      state.historyWriteStatus = "pending";
+      render();
+      pushSharedSubmission(state.lastSubmission, function(){ render(); });
+    }
     else if(action === "share-order"){
       var shareText = buildPrintText(state.printData);
       navigator.share({ title: state.printData.storeName + " — Order", text: shareText }).catch(function(){});
@@ -3085,12 +3095,30 @@
   // happen before that whole boot chain finishes.
   function waitForCloudAuth(timeoutMs, cb){
     if(cloudUid){ cb(true); return; }
-    var waited = 0;
-    var interval = setInterval(function(){
-      waited += 150;
-      if(cloudUid){ clearInterval(interval); cb(true); }
-      else if(waited >= timeoutMs){ clearInterval(interval); cb(false); }
-    }, 150);
+    // Boot's own sign-in attempt may have failed or still be hanging (no
+    // network at page load) -- nothing else ever retries it on its own, so
+    // without actively calling signInAnonymously() again here, cloudUid
+    // would simply never arrive even once connectivity comes back, making
+    // "try again" a dead button. signInAnonymously() is safe to call again
+    // even if a first attempt is still in flight or already succeeded.
+    var settled = false;
+    var timer = setTimeout(function(){
+      if(settled) return;
+      settled = true;
+      cb(false);
+    }, timeoutMs);
+    firebase.auth().signInAnonymously().then(function(cred){
+      if(settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cloudUid = cred.user.uid;
+      cb(true);
+    }).catch(function(){
+      if(settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cb(false);
+    });
   }
 
   // Mirrors a submission into a shared Firestore collection everyone can
