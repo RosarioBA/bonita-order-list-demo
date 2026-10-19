@@ -344,6 +344,10 @@
     background:none; border:none; padding:0; font-family:inherit; color:inherit;
     text-align:left; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
   }
+  .column-header .info-caret{
+    background:none; border:none; padding:0; font-family:inherit; cursor:pointer;
+    justify-self:center;
+  }
   .info-caret{
     font-size:1.15rem; color:var(--accent); font-weight:400; line-height:1;
     display:inline-flex; align-items:center; justify-content:center;
@@ -1522,6 +1526,7 @@
     confirmResetOpen: false,
     confirmDeleteItem: null, // itemId pending delete confirmation on Item Catalog, or null
     addItemOpen: false, // whether the "Add item" sheet is open on Item Catalog
+    haveOrderInfoOpen: false, // whether the Have/Order explainer sheet is open on the order screen
     reorderSupplier: null, // supplier name currently in drag-to-reorder mode on Item Info, or null
     reorderSection: null, // "food" | "bar" -- which half of that supplier is being reordered
     historyItems: undefined, // undefined = not fetched yet, null = loading, array = loaded (shared across everyone)
@@ -2147,13 +2152,16 @@
         '<button class="unreviewed-toggle '+(state.showOnlyUnreviewed?'active':'')+'" data-action="toggle-unreviewed-filter">'+
           (state.showOnlyUnreviewed ? '👁 Showing only unreviewed — tap to show all' : '👁 Show only unreviewed')+
         '</button>'+
-        '<div class="column-header row-grid"><span></span><span></span><span>Have</span><span>Order</span><span></span></div>'+
+        '<div class="column-header row-grid"><span></span><span></span><span>Have</span><span>Order</span>'+
+          '<button class="info-caret" data-action="open-have-order-info" title="What do Have and Order mean?">ⓘ</button>'+
+        '</div>'+
       '</div>'+
       '<div class="list-body">'+groupsHtml+'</div>'+
       '<div class="bottom-bar">'+
         '<button class="submit-btn" data-action="preview-print">🖨 Preview list</button>'+
         '<button class="link-btn" data-action="fill-test-data">⚡ Fill test data (testing only)</button>'+
-      '</div>'
+      '</div>'+
+      (state.haveOrderInfoOpen ? renderHaveOrderInfoSheet() : "")
     );
   }
 
@@ -2247,6 +2255,23 @@
         '<div class="info-row"><span>Weight / unit</span><b>'+(item.weightPerUnit==null ? "—" : fmt(item.weightPerUnit)+" g")+'</b></div>'+
         '<div class="info-row"><span>Box weight</span><b>'+(bw==null ? "—" : fmt(bw)+" g")+'</b></div>'+
         '<button class="info-edit-link" data-action="edit-in-catalog" data-item="'+item.id+'">Edit these on Item Info →</button>'+
+      '</div>'
+    );
+  }
+
+  function renderHaveOrderInfoSheet(){
+    return (
+      '<div class="overlay" data-action="close-have-order-info">'+
+        '<div class="sheet" data-action="noop">'+
+          '<h3>What do Have and Order mean?</h3>'+
+          '<p><b>Have</b> — how many you have in stock right now, before ordering.<br>'+
+            '<i>Tienes</i> — cuántos tienes en stock ahora mismo, antes de pedir.</p>'+
+          '<p><b>Order</b> — how many to order. This is what actually gets sent to the supplier.<br>'+
+            '<i>Pedir</i> — cuántos pedir. Esto es lo que se envía al proveedor.</p>'+
+          '<div class="sheet-actions">'+
+            '<button class="btn-primary" data-action="close-have-order-info">Got it</button>'+
+          '</div>'+
+        '</div>'+
       '</div>'
     );
   }
@@ -2914,6 +2939,14 @@
     }
     else if(action === "toggle-unreviewed-filter"){
       state.showOnlyUnreviewed = !state.showOnlyUnreviewed;
+      render();
+    }
+    else if(action === "open-have-order-info"){
+      state.haveOrderInfoOpen = true;
+      render();
+    }
+    else if(action === "close-have-order-info"){
+      state.haveOrderInfoOpen = false;
       render();
     }
     else if(action === "clear-catalog-search"){
