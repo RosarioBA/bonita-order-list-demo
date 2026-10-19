@@ -766,6 +766,7 @@
   var CONFIG_KEY = "bonita_ol_config_v1"; // { storeNames: {id: name}, staff: {id: [names]} }
   var SESSION_KEY_PREFIX = "bonita_ol_session_v1_";
   var SUBMISSIONS_KEY = "bonita_ol_submissions_v1";
+  var LOCAL_WRITE_MARKER_KEY = "bonita_ol_last_write_at_v1"; // when THIS device last wrote locally -- guards the private-backup restore below from clobbering newer unsynced progress with an older cloud snapshot
   var APP_STATE_KEY = "bonita_ol_appstate_v1";
 
   function defaultCatalog(){
@@ -1195,6 +1196,7 @@
   }
   function writeJSON(key, value){
     try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
+    try{ localStorage.setItem(LOCAL_WRITE_MARKER_KEY, String(Date.now())); }catch(e){}
     scheduleCloudSync();
   }
 
@@ -1290,8 +1292,21 @@
         return firebase.firestore().collection("users").doc(cloudUid).get();
       }).then(function(doc){
         if(doc && doc.exists){
-          var blob = doc.data().data || {};
-          Object.keys(blob).forEach(function(k){ localStorage.setItem(k, blob[k]); });
+          var docData = doc.data();
+          var cloudUpdatedAt = docData.updatedAt || 0;
+          var localWriteAt = parseInt(localStorage.getItem(LOCAL_WRITE_MARKER_KEY), 10) || 0;
+          // Real incident: this restore used to run unconditionally on every
+          // boot, so a reload that happened before the last edit's debounced
+          // backup finished (e.g. iOS backgrounding/killing the tab and
+          // silently reloading it) would pull an OLDER cloud snapshot and
+          // silently revert fresher unsynced local progress. Only restore
+          // when the cloud copy isn't older than this device's own last
+          // write -- localWriteAt is 0 on a genuinely fresh device/browser,
+          // so that case still restores normally.
+          if(localWriteAt <= cloudUpdatedAt){
+            var blob = docData.data || {};
+            Object.keys(blob).forEach(function(k){ localStorage.setItem(k, blob[k]); });
+          }
         }
         // Catalog overrides/order are shared, not part of this device's own
         // backup -- pull the current shared state in too, overwriting
