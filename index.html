@@ -1309,7 +1309,23 @@
         }
         cloudReady = true;
         setCloudStatus("synced");
-        if(!timedOut){ clearTimeout(timer); onDone(); }
+        if(!timedOut){
+          clearTimeout(timer);
+          onDone();
+        } else {
+          // boot() already ran without this data (the 4s timeout gave up
+          // before a slow connection finished fetching it -- a real
+          // incident: a coworker's first-ever visit on a weak connection
+          // showed stale defaults, deleted items included, until a manual
+          // refresh). Re-apply catalog/config now that it's finally here
+          // and re-render, so a slow first load self-corrects instead of
+          // silently saving data nobody sees.
+          var cfg = loadConfig();
+          STORES = cfg.stores;
+          STAFF = cfg.staff;
+          catalog = loadCatalog();
+          render();
+        }
       }).catch(function(){
         setCloudStatus("error");
         if(!timedOut){ clearTimeout(timer); onDone(); }
