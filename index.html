@@ -2173,15 +2173,20 @@
     var isFraction = isBoxFractionItem(item);
     var displayVal = entry.onHand === "" ? "–" : (isFraction ? fmtBoxFraction(parseFloat(entry.onHand)) : fmt(parseFloat(entry.onHand)));
     var opts = onHandOptions(item, entry.onHand);
-    var optionsHtml = opts.map(function(o){
+    var numericOptionsHtml = opts.map(function(o){
       return '<button class="onhand-option'+(String(o)===String(entry.onHand)?' active':'')+'" '+
         'data-action="pick-onhand" data-item="'+item.id+'" data-value="'+o+'">'+(isFraction ? fmtBoxFraction(o) : fmt(o))+'</button>';
-    }).join("") + '<button class="onhand-option" data-action="pick-onhand-other" data-item="'+item.id+'">Other…</button>';
+    }).join("");
+    // Pinned above the scrollable numeric list, not after it -- for an item
+    // whose real count regularly runs past the quick-pick range (a case of
+    // boxes of milk, etc.), manual entry used to mean scrolling past 0-10
+    // to reach it every time. Now it's always one tap away regardless.
+    var otherBtn = '<button class="onhand-option" data-action="pick-onhand-other" data-item="'+item.id+'">Other…</button>';
 
     return (
       '<div class="onhand-picker">'+
         '<button class="cell-input onhand-trigger" data-action="toggle-onhand-picker" data-item="'+item.id+'">'+displayVal+'</button>'+
-        (isOpen ? '<div class="onhand-dropdown"><div class="onhand-dropdown-scroll">'+optionsHtml+'</div></div>' : '')+
+        (isOpen ? '<div class="onhand-dropdown">'+otherBtn+'<div class="onhand-dropdown-scroll">'+numericOptionsHtml+'</div></div>' : '')+
       '</div>'
     );
   }
